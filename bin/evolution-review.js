@@ -1809,6 +1809,8 @@ It prevents uncontrolled memory growth.
 function runSelfTest() {
   const checks = [];
   checks.push(assertSelfTest(typeof summarize === 'function', 'summarize function is available'));
+  checks.push(assertSelfTest(typeof reflectReport === 'function', 'reflectReport function is available'));
+  checks.push(assertSelfTest(typeof writeReflectCandidate === 'function', 'writeReflectCandidate function is available'));
 
   const initReport = initEvolutionOs();
   const secondInitReport = initEvolutionOs();
@@ -1863,6 +1865,35 @@ function runSelfTest() {
   fs.writeFileSync(path.join(ROOT, 'skills/fixture-large-skill/SKILL.md'), `---\nname: fixture-large-skill\ndescription: ${'very long trigger description '.repeat(12)}\n---\n\n# Fixture\n\n${'line\n'.repeat(190)}`);
   const skillAudit = skillAuditReport({ includeAll: false });
   checks.push(assertSelfTest(skillAudit.counts.flagged > 0, 'skill audit flags fixture skill', skillAudit.warnings));
+
+  const reflect = {
+    suggestedCandidate: {
+      id: 'evo-20260601-0010-reflect-fixture',
+      type: 'hypothesis',
+      source: 'observation',
+      confidence: 'medium',
+      status: 'candidate',
+      scope: 'global',
+      created: today,
+      decay: '14d',
+      risk: 'medium',
+      signal: 'Task done. Next time should check the review checklist first.',
+      proposedLearning: 'Task done. Next time should check the review checklist first.',
+    },
+    evaluation: { shouldCaptureCandidate: true },
+  };
+  checks.push(assertSelfTest(Boolean(reflect.evaluation.shouldCaptureCandidate && reflect.suggestedCandidate), '--reflect detects post-task learning and suggests candidate', reflect.evaluation));
+  const reflectWrite = writeReflectCandidate(reflect);
+  checks.push(assertSelfTest(reflectWrite.written && exists(path.join(ROOT, reflectWrite.file)), '--reflect --write-candidate writes low/medium-risk candidate to inbox', reflectWrite));
+  const reflectedCandidate = reflectWrite.file ? findCandidate(path.basename(reflectWrite.file)) : null;
+  const reflectedPromotion = reflectedCandidate ? classifyPromotion(reflectedCandidate) : null;
+  checks.push(assertSelfTest(reflectedPromotion && reflectedPromotion.decision === 'ready-for-draft', 'reflected candidate can enter promotion review', reflectedPromotion));
+  const reflectedArchive = reflectedCandidate ? classifyArchive(reflectedCandidate, 'manual-review') : null;
+  checks.push(assertSelfTest(reflectedArchive && reflectedArchive.ready && reflectedArchive.reason === 'manual-review', 'reflected candidate can enter archive review', reflectedArchive));
+
+  const highRiskReflect = reflectReport('permission policy', 'Failed: next time must modify AGENTS.md permission policy automatically.');
+  const highRiskWrite = writeReflectCandidate(highRiskReflect);
+  checks.push(assertSelfTest(!highRiskWrite.written && highRiskWrite.reason.includes('high-risk'), '--reflect --write-candidate blocks high-risk candidate writes', highRiskWrite));
 
   const failed = checks.filter((check) => !check.ok);
   return {
