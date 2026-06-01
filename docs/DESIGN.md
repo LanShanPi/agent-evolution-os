@@ -392,6 +392,7 @@ Evolution OS 目前不会：
 
 优先级：
 
-1. 增加 reflect → write-candidate → review → promote/archive 的端到端 fixture；
-2. 让 `--prepare` 能读取最近 reflect/promoted 结果，形成“用过/没用过”的反馈；
-3. 再考虑 OpenClaw skill package / plugin 化。
+1. 实现 active evolution layer：例如 `memory/evolution-os/runtime/active-lessons.md` 或 `active-lessons.json`，作为不污染核心文件但能直接影响 `--prepare` 的活跃经验层；
+2. 增加 active layer 的 promote/apply 草案：low/medium risk 经人工确认后进入 active layer，high risk 只出草案；
+3. 让 `--prepare` 默认读取 active layer，并在 `--usage-report` 里统计 active lessons 的 applied / stale 状态；
+4. 再考虑 OpenClaw skill package / plugin 化。
