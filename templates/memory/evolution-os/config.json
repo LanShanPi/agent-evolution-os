@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "memory": {
+    "targetBytes": 3072,
+    "softLimitBytes": 12288,
+    "sectionWarningBytes": 1200,
+    "maxBulletsPerSection": 6
+  },
+  "candidates": {
+    "dueSoonMinDays": 3,
+    "dueSoonRatio": 0.2,
+    "duplicateSimilarityThreshold": 0.72
+  },
+  "skills": {
+    "maxDescriptionLength": 220,
+    "largeSkillBytes": 6000,
+    "manyLines": 180,
+    "similarDescriptionThreshold": 0.78
+  },
+  "boundaries": {
+    "autoModifyCoreFiles": false,
+    "autoDeleteMemory": false,
+    "autoPublishSkills": false,
+    "autoTrainOrUpload": false
+  }
+}
