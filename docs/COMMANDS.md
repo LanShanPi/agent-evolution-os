@@ -129,15 +129,24 @@ node tools/evolution-review.js --usage-report
 - 达到阈值后仍从未 applied 的 stale prepared-only lessons；
 - 下一步：晋升强触发位置，或压缩/归档低使用率规则。
 
-默认阈值：同一 lesson `prepared >= 3` 且 `applied = 0` 才进入 cleanup 建议。可在 `memory/evolution-os/config.json` 调整：
+默认阈值：同一 lesson `prepared >= 3` 且 `applied = 0` 才进入 cleanup 建议；同一 lesson `applied >= 3` 才进入 promotion 建议。可在 `memory/evolution-os/config.json` 调整：
 
 ```json
 {
   "runtime": {
-    "stalePreparedOnlyThreshold": 3
+    "stalePreparedOnlyThreshold": 3,
+    "effectivePromotionThreshold": 3
   }
 }
 ```
+
+显式加 `--suggest-promotion-candidates` 时，会为 effective lessons 生成 inbox candidate 草案：
+
+```bash
+node tools/evolution-review.js --usage-report --suggest-promotion-candidates
+```
+
+安全边界：只写 promotion candidate，不修改 trigger 文件、skills 或核心记忆。
 
 显式加 `--suggest-cleanup-candidates` 时，会为 stale prepared-only lessons 生成 inbox candidate 草案：
 

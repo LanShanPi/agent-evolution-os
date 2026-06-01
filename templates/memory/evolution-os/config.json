@@ -18,7 +18,8 @@
     "similarDescriptionThreshold": 0.78
   },
   "runtime": {
-    "stalePreparedOnlyThreshold": 3
+    "stalePreparedOnlyThreshold": 3,
+    "effectivePromotionThreshold": 3
   },
   "boundaries": {
     "autoModifyCoreFiles": false,

@@ -33,6 +33,7 @@ const init = args.has('--init');
 const initConfig = args.has('--init-config');
 const selfCheck = args.has('--self-check');
 const selfTest = args.has('--self-test');
+const suggestPromotionCandidates = args.has('--suggest-promotion-candidates');
 const suggestPromotion = args.has('--suggest-promotion');
 const promoteDraft = args.has('--promote-draft');
 const archiveDraft = args.has('--archive-draft');
@@ -72,6 +73,7 @@ const DEFAULT_CONFIG = {
   },
   runtime: {
     stalePreparedOnlyThreshold: 3,
+    effectivePromotionThreshold: 3,
   },
   boundaries: {
     autoModifyCoreFiles: false,
@@ -123,6 +125,8 @@ Review:
   --usage-report                  Summarize runtime lesson reuse from usage-log.jsonl
   --usage-report --suggest-cleanup-candidates
                                   Draft candidates for lessons prepared but not applied
+  --usage-report --suggest-promotion-candidates
+                                  Draft candidates for lessons repeatedly applied
   --self-check                   Check required files, config, and safety boundaries
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --init                         Initialize Evolution OS files/directories if missing
@@ -1914,6 +1918,15 @@ function runSelfTest() {
   checks.push(assertSelfTest(usage.counts.prepare === 1 && usage.counts.reflect === 1, 'usage ledger records prepare and reflect events', usage.counts));
   checks.push(assertSelfTest(usage.counts.lessons > 0, 'usage report summarizes lesson stats', usage.counts));
 
+  appendUsageLog({ type: 'reflect', task: reflectForUsage.task, outcome: reflectForUsage.outcome, appliedLessons: reflectForUsage.appliedLessons, candidateCreated: false });
+  appendUsageLog({ type: 'reflect', task: reflectForUsage.task, outcome: reflectForUsage.outcome, appliedLessons: reflectForUsage.appliedLessons, candidateCreated: false });
+  const effectiveUsage = usageReportData();
+  const promotionDrafts = usagePromotionCandidateDrafts(effectiveUsage);
+  checks.push(assertSelfTest(effectiveUsage.counts.effectiveLessons > 0, 'usage report detects repeatedly applied lessons', effectiveUsage.counts));
+  checks.push(assertSelfTest(promotionDrafts.count > 0, 'usage promotion drafts are generated for effective lessons', promotionDrafts));
+  const promotionWritten = writeUsagePromotionCandidates(promotionDrafts);
+  checks.push(assertSelfTest(promotionWritten.some((item) => item.created), 'usage promotion candidates can be written to inbox', promotionWritten));
+
   appendUsageLog({ type: 'prepare', task: 'unused stale lesson fixture', relevantLessons: [{ source: 'MEMORY.md', line: 99, text: 'unused stale lesson fixture should be reviewed' }] });
   appendUsageLog({ type: 'prepare', task: 'unused stale lesson fixture', relevantLessons: [{ source: 'MEMORY.md', line: 99, text: 'unused stale lesson fixture should be reviewed' }] });
   appendUsageLog({ type: 'prepare', task: 'unused stale lesson fixture', relevantLessons: [{ source: 'MEMORY.md', line: 99, text: 'unused stale lesson fixture should be reviewed' }] });
@@ -2212,7 +2225,7 @@ function usageReportData() {
 
   const lessonStats = [...lessons.values()].sort((a, b) => b.prepared - a.prepared || b.applied - a.applied || a.key.localeCompare(b.key));
   const stalePreparedOnly = lessonStats.filter((item) => item.prepared >= CONFIG.runtime.stalePreparedOnlyThreshold && item.applied === 0);
-  const effective = lessonStats.filter((item) => item.applied > 0);
+  const effective = lessonStats.filter((item) => item.applied >= CONFIG.runtime.effectivePromotionThreshold);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -2231,9 +2244,113 @@ function usageReportData() {
     stalePreparedOnly,
     nextSuggestedActions: [
       stalePreparedOnly.length ? `Review lessons prepared at least ${CONFIG.runtime.stalePreparedOnlyThreshold} times but never applied; compress, retag, or archive if they stay unused.` : `No lessons have crossed the prepared-only threshold (${CONFIG.runtime.stalePreparedOnlyThreshold}) yet.`,
-      effective.length ? 'Consider promoting repeatedly applied lessons to stronger trigger/checklist locations.' : 'No applied lesson reuse observed yet; keep recording reflect outcomes.',
+      effective.length ? `Consider promoting lessons applied at least ${CONFIG.runtime.effectivePromotionThreshold} times to stronger trigger/checklist locations.` : `No lessons have crossed the effective promotion threshold (${CONFIG.runtime.effectivePromotionThreshold}) yet.`,
     ],
   };
+}
+
+function usagePromotionCandidateForLesson(item, index) {
+  const id = `evo-${today.replace(/-/g, '')}-usage-promotion-${slugify(item.source)}-${item.line || index + 1}-${index + 1}`;
+  const sourceRef = `${item.source || '?'}#L${item.line || '?'}`;
+  return {
+    id,
+    file: `memory/evolution-os/inbox/${id}.md`,
+    sourceLesson: sourceRef,
+    content: `---
+id: ${id}
+type: workflow
+source: review
+confidence: high
+status: candidate
+scope: global
+created: ${today}
+decay: 30d
+risk: medium
+suggested_targets:
+  - memory/task-trigger-checklist.md
+  - memory/skill-bank/
+---
+
+## Signal
+
+Usage report found a lesson that was applied ${item.applied} time(s) after being prepared ${item.prepared} time(s).
+
+Source: ${sourceRef}
+
+Lesson:
+
+${item.text}
+
+## Proposed Learning
+
+Promote or strengthen this lesson's trigger location because repeated runtime evidence suggests it affects task outcomes.
+
+## Why It Matters
+
+Evolution requires positive reinforcement, not only cleanup. Repeatedly applied lessons should become easier to retrieve before similar tasks.
+
+## Promotion Criteria
+
+- The lesson is still accurate and behavior-changing.
+- A stronger trigger/checklist/skill-bank location would improve future prepare results.
+- It is not already represented by a better promoted rule.
+
+## Rejection Criteria
+
+- The apparent applications were accidental keyword overlap.
+- The lesson is too narrow, obsolete, or already promoted elsewhere.
+`,
+  };
+}
+
+function usagePromotionCandidateDrafts(report) {
+  const drafts = report.effective.map((item, index) => usagePromotionCandidateForLesson(item, index));
+  return {
+    generatedAt: new Date().toISOString(),
+    count: drafts.length,
+    drafts,
+    boundary: 'Drafts are candidates only. They do not modify trigger files, skills, or core memory automatically.',
+  };
+}
+
+function writeUsagePromotionCandidates(draftReport) {
+  fs.mkdirSync(INBOX_DIR, { recursive: true });
+  const written = [];
+  for (const draft of draftReport.drafts) {
+    const out = path.join(ROOT, draft.file);
+    if (exists(out)) {
+      written.push({ file: draft.file, created: false, skipped: true });
+      continue;
+    }
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, draft.content);
+    written.push({ file: draft.file, created: true, skipped: false });
+  }
+  return written;
+}
+
+function renderUsagePromotionCandidatesMarkdown(report) {
+  const lines = [];
+  lines.push(`# Usage Promotion Candidate Drafts - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(`Drafts: ${report.count}`);
+  lines.push('');
+  lines.push('## Drafts');
+  lines.push('');
+  if (!report.drafts.length) lines.push('- None');
+  else {
+    for (const draft of report.drafts) {
+      lines.push(`- ${draft.file}`);
+      lines.push(`  - source lesson: ${draft.sourceLesson}`);
+    }
+  }
+  lines.push('');
+  lines.push('## Boundary');
+  lines.push('');
+  lines.push(report.boundary);
+  lines.push('');
+  return lines.join('\n');
 }
 
 function usageCleanupCandidateForLesson(item, index) {
@@ -2350,6 +2467,7 @@ function renderUsageReportMarkdown(report) {
   lines.push('');
   for (const [key, value] of Object.entries(report.counts)) lines.push(`- ${key}: ${value}`);
   lines.push(`- stalePreparedOnlyThreshold: ${CONFIG.runtime.stalePreparedOnlyThreshold}`);
+  lines.push(`- effectivePromotionThreshold: ${CONFIG.runtime.effectivePromotionThreshold}`);
   lines.push('');
   lines.push('## Effective Lessons');
   lines.push('');
@@ -2553,6 +2671,15 @@ if (help) {
       if (json) console.log(JSON.stringify(payload, null, 2));
       else {
         console.log(renderUsageCleanupCandidatesMarkdown(draftReport));
+        for (const item of written) console.error(`${item.created ? 'Wrote' : 'Exists'} ${item.file}`);
+      }
+    } else if (suggestPromotionCandidates) {
+      const draftReport = usagePromotionCandidateDrafts(report);
+      const written = writeUsagePromotionCandidates(draftReport);
+      const payload = { ...draftReport, written };
+      if (json) console.log(JSON.stringify(payload, null, 2));
+      else {
+        console.log(renderUsagePromotionCandidatesMarkdown(draftReport));
         for (const item of written) console.error(`${item.created ? 'Wrote' : 'Exists'} ${item.file}`);
       }
     } else if (json) console.log(JSON.stringify(report, null, 2));

@@ -352,6 +352,7 @@ node tools/evolution-review.js --skill-audit --all-skills --suggest-cleanup-cand
 - [x] 增加 lesson reuse 统计与后续监控报告。
 - [x] 为 prepared-but-not-applied lessons 生成 cleanup candidate，接入遗忘/压缩审查。
 - [x] 增加 cleanup threshold，默认 prepared >= 3 且 applied = 0 才建议 cleanup。
+- [x] 增加 effective promotion threshold，默认 applied >= 3 才建议强化触发位置。
 
 ### Phase 3：强约束工具
 
