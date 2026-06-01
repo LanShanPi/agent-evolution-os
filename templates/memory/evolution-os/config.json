@@ -17,6 +17,9 @@
     "manyLines": 180,
     "similarDescriptionThreshold": 0.78
   },
+  "runtime": {
+    "stalePreparedOnlyThreshold": 3
+  },
   "boundaries": {
     "autoModifyCoreFiles": false,
     "autoDeleteMemory": false,

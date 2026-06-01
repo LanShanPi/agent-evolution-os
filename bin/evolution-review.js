@@ -70,6 +70,9 @@ const DEFAULT_CONFIG = {
     manyLines: 180,
     similarDescriptionThreshold: 0.78,
   },
+  runtime: {
+    stalePreparedOnlyThreshold: 3,
+  },
   boundaries: {
     autoModifyCoreFiles: false,
     autoDeleteMemory: false,
@@ -1912,6 +1915,8 @@ function runSelfTest() {
   checks.push(assertSelfTest(usage.counts.lessons > 0, 'usage report summarizes lesson stats', usage.counts));
 
   appendUsageLog({ type: 'prepare', task: 'unused stale lesson fixture', relevantLessons: [{ source: 'MEMORY.md', line: 99, text: 'unused stale lesson fixture should be reviewed' }] });
+  appendUsageLog({ type: 'prepare', task: 'unused stale lesson fixture', relevantLessons: [{ source: 'MEMORY.md', line: 99, text: 'unused stale lesson fixture should be reviewed' }] });
+  appendUsageLog({ type: 'prepare', task: 'unused stale lesson fixture', relevantLessons: [{ source: 'MEMORY.md', line: 99, text: 'unused stale lesson fixture should be reviewed' }] });
   const staleUsage = usageReportData();
   const cleanupDrafts = usageCleanupCandidateDrafts(staleUsage);
   checks.push(assertSelfTest(staleUsage.counts.stalePreparedOnly > 0, 'usage report detects prepared-but-not-applied lessons', staleUsage.counts));
@@ -2206,7 +2211,7 @@ function usageReportData() {
   }
 
   const lessonStats = [...lessons.values()].sort((a, b) => b.prepared - a.prepared || b.applied - a.applied || a.key.localeCompare(b.key));
-  const stalePreparedOnly = lessonStats.filter((item) => item.prepared > 0 && item.applied === 0);
+  const stalePreparedOnly = lessonStats.filter((item) => item.prepared >= CONFIG.runtime.stalePreparedOnlyThreshold && item.applied === 0);
   const effective = lessonStats.filter((item) => item.applied > 0);
 
   return {
@@ -2225,7 +2230,7 @@ function usageReportData() {
     effective,
     stalePreparedOnly,
     nextSuggestedActions: [
-      stalePreparedOnly.length ? 'Review lessons repeatedly prepared but never applied; compress, retag, or archive if they stay unused.' : 'No stale prepared-only lessons yet.',
+      stalePreparedOnly.length ? `Review lessons prepared at least ${CONFIG.runtime.stalePreparedOnlyThreshold} times but never applied; compress, retag, or archive if they stay unused.` : `No lessons have crossed the prepared-only threshold (${CONFIG.runtime.stalePreparedOnlyThreshold}) yet.`,
       effective.length ? 'Consider promoting repeatedly applied lessons to stronger trigger/checklist locations.' : 'No applied lesson reuse observed yet; keep recording reflect outcomes.',
     ],
   };
@@ -2344,6 +2349,7 @@ function renderUsageReportMarkdown(report) {
   lines.push('## Counts');
   lines.push('');
   for (const [key, value] of Object.entries(report.counts)) lines.push(`- ${key}: ${value}`);
+  lines.push(`- stalePreparedOnlyThreshold: ${CONFIG.runtime.stalePreparedOnlyThreshold}`);
   lines.push('');
   lines.push('## Effective Lessons');
   lines.push('');

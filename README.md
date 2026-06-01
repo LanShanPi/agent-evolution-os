@@ -141,7 +141,7 @@ node tools/evolution-review.js --reflect --task "write and review a public conte
 node tools/evolution-review.js --usage-report
 ```
 
-Usage is appended to `memory/evolution-os/runtime/usage-log.jsonl`. The report highlights effective lessons and lessons that are repeatedly prepared but not applied, supporting later promotion, compression, or forgetting.
+Usage is appended to `memory/evolution-os/runtime/usage-log.jsonl`. The report highlights effective lessons and lessons that are repeatedly prepared but not applied, supporting later promotion, compression, or forgetting. By default, a lesson must be prepared at least 3 times with 0 applications before cleanup is suggested; configure this via `runtime.stalePreparedOnlyThreshold` in `memory/evolution-os/config.json`.
 
 To turn prepared-but-not-applied lessons into reviewable cleanup candidates:
 

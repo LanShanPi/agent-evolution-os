@@ -126,8 +126,18 @@ node tools/evolution-review.js --usage-report
 
 - prepare / reflect 事件数量；
 - 被准备且被 outcome 复用的 effective lessons；
-- 反复被 prepare 但从未 applied 的 stale prepared-only lessons；
+- 达到阈值后仍从未 applied 的 stale prepared-only lessons；
 - 下一步：晋升强触发位置，或压缩/归档低使用率规则。
+
+默认阈值：同一 lesson `prepared >= 3` 且 `applied = 0` 才进入 cleanup 建议。可在 `memory/evolution-os/config.json` 调整：
+
+```json
+{
+  "runtime": {
+    "stalePreparedOnlyThreshold": 3
+  }
+}
+```
 
 显式加 `--suggest-cleanup-candidates` 时，会为 stale prepared-only lessons 生成 inbox candidate 草案：
 
