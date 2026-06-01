@@ -38,6 +38,32 @@ memory/evolution-os/reports/
 node tools/evolution-review.js --write-report
 ```
 
+### `--prepare --task <text>`
+
+任务前检索相关经验，让历史学习影响本次行为。
+
+```bash
+node tools/evolution-review.js --prepare --task "小红书 周报 内容 发布 审核"
+```
+
+它会扫描：
+
+- `MEMORY.md`
+- `TOOLS.md`
+- `memory/task-trigger-checklist.md`
+- `memory/evolution-os/promoted/`
+- `memory/hard-cases/`
+- `memory/skill-bank/`
+
+输出：
+
+- relevant lessons；
+- source citations；
+- apply checklist；
+- gaps / next step。
+
+这是 runtime self-evolution loop 的第一步：任务前调用经验。
+
 ## 初始化 / 自检
 
 ### `--init`

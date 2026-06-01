@@ -6,6 +6,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Added
 
+- `--prepare --task <text>` to retrieve relevant lessons before a task and produce an apply checklist.
 - File-system based Evolution OS MVP.
 - Candidate inbox, promoted log, archive, reports, schemas, training-corpus directories.
 - `tools/evolution-review.js` review/draft CLI.

@@ -91,6 +91,25 @@ This draft includes a `bin` entry:
 
 The package is not published to npm yet. Until then, use clone/copy or a local checkout.
 
+## Runtime loop MVP
+
+Evolution OS is moving beyond review/draft governance into a runtime self-evolution loop.
+
+Before a task, retrieve relevant lessons:
+
+```bash
+node tools/evolution-review.js --prepare --task "write and review a public content post"
+```
+
+`--prepare` scans memory, promoted rules, hard cases, and skill-bank notes, then returns:
+
+- relevant lessons;
+- source citations;
+- an apply checklist;
+- gaps to capture after the task.
+
+This is the first runtime step: making previous learning affect future behavior.
+
 ## Quickstart in a workspace
 
 Run from the root of your agent workspace:

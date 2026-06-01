@@ -18,6 +18,9 @@ const args = new Set(argv);
 const writeReport = args.has('--write-report');
 const json = args.has('--json');
 const help = args.has('--help') || args.has('-h');
+const prepare = args.has('--prepare');
+const taskArgIndex = argv.indexOf('--task');
+const taskText = taskArgIndex >= 0 ? argv[taskArgIndex + 1] : '';
 const init = args.has('--init');
 const initConfig = args.has('--init-config');
 const selfCheck = args.has('--self-check');
@@ -101,6 +104,7 @@ Usage:
 Review:
   --json                         Output JSON
   --write-report                 Write report to memory/evolution-os/reports/
+  --prepare --task <text>         Retrieve relevant lessons/checklists before a task
   --self-check                   Check required files, config, and safety boundaries
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --init                         Initialize Evolution OS files/directories if missing
@@ -1893,6 +1897,124 @@ function renderSelfTestMarkdown(report) {
   return lines.join('\n');
 }
 
+function collectPrepareSources() {
+  const sourcePaths = [
+    'MEMORY.md',
+    'TOOLS.md',
+    'memory/task-trigger-checklist.md',
+  ];
+  const dirs = [
+    'memory/evolution-os/promoted',
+    'memory/hard-cases',
+    'memory/skill-bank',
+  ];
+  for (const dir of dirs) {
+    const abs = path.join(ROOT, dir);
+    if (!exists(abs)) continue;
+    const stack = [abs];
+    while (stack.length) {
+      const current = stack.pop();
+      for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+        const p = path.join(current, entry.name);
+        if (entry.isDirectory()) stack.push(p);
+        else if (entry.isFile() && entry.name.endsWith('.md')) sourcePaths.push(path.relative(ROOT, p));
+      }
+    }
+  }
+  return [...new Set(sourcePaths)].filter((relativePath) => exists(path.join(ROOT, relativePath))).sort();
+}
+
+function lineScore(line, taskTokens) {
+  const tokens = tokenize(line);
+  if (!tokens.size) return 0;
+  let score = 0;
+  for (const token of taskTokens) if (tokens.has(token)) score += 3;
+  if (/必须|禁止|不要|硬红线|门禁|规则|失败|教训|check|before|avoid|never|must/i.test(line)) score += 2;
+  if (/^\s*-\s+/.test(line)) score += 1;
+  return score;
+}
+
+function prepareReport(task) {
+  if (!task || !task.trim()) throw new Error('Missing --task <text>');
+  const taskTokens = tokenize(task);
+  const sources = collectPrepareSources();
+  const matches = [];
+  for (const relativePath of sources) {
+    const text = readText(path.join(ROOT, relativePath));
+    const lines = text.split('\n');
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index].trim();
+      if (!line || line.startsWith('#') || line.length < 8) continue;
+      const score = lineScore(line, taskTokens);
+      if (score <= 0) continue;
+      matches.push({
+        source: relativePath,
+        line: index + 1,
+        text: line.replace(/^[-*]\s*/, ''),
+        score,
+      });
+    }
+  }
+  matches.sort((a, b) => b.score - a.score || a.source.localeCompare(b.source));
+  const seen = new Set();
+  const selected = [];
+  for (const match of matches) {
+    const key = normalizeText(match.text).slice(0, 120);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selected.push(match);
+    if (selected.length >= 12) break;
+  }
+  return {
+    generatedAt: new Date().toISOString(),
+    task,
+    sourcesScanned: sources.length,
+    relevantLessons: selected,
+    applyChecklist: selected.slice(0, 8).map((item) => item.text),
+    gaps: selected.length
+      ? []
+      : ['No relevant lessons found. If the task produces a correction/failure, capture it as a candidate after the task.'],
+    nextStep: 'Apply these lessons before acting. After the task, run/record reflection so the system can evaluate whether the lessons helped.',
+  };
+}
+
+function renderPrepareMarkdown(report) {
+  const lines = [];
+  lines.push(`# Evolution OS Prepare - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push('');
+  lines.push('## Task');
+  lines.push('');
+  lines.push(report.task);
+  lines.push('');
+  lines.push('## Relevant Lessons');
+  lines.push('');
+  if (!report.relevantLessons.length) lines.push('- None found');
+  else {
+    for (const item of report.relevantLessons) {
+      lines.push(`- ${item.text}`);
+      lines.push(`  - Source: ${item.source}#L${item.line}`);
+    }
+  }
+  lines.push('');
+  lines.push('## Apply Checklist');
+  lines.push('');
+  if (!report.applyChecklist.length) lines.push('- No checklist generated.');
+  else for (const item of report.applyChecklist) lines.push(`- [ ] ${item}`);
+  lines.push('');
+  lines.push('## Gaps');
+  lines.push('');
+  if (!report.gaps.length) lines.push('- None');
+  else for (const gap of report.gaps) lines.push(`- ${gap}`);
+  lines.push('');
+  lines.push('## Next Step');
+  lines.push('');
+  lines.push(report.nextStep);
+  lines.push('');
+  return lines.join('\n');
+}
+
 function renderMarkdown(report) {
   const lines = [];
   lines.push(`# Evolution OS Review - ${today}`);
@@ -1956,6 +2078,15 @@ function renderMarkdown(report) {
 
 if (help) {
   console.log(renderHelp());
+} else if (prepare) {
+  try {
+    const report = prepareReport(taskText);
+    if (json) console.log(JSON.stringify(report, null, 2));
+    else console.log(renderPrepareMarkdown(report));
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
 } else if (init) {
   try {
     const report = initEvolutionOs();
