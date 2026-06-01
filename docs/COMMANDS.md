@@ -64,6 +64,43 @@ node tools/evolution-review.js --prepare --task "小红书 周报 内容 发布 
 
 这是 runtime self-evolution loop 的第一步：任务前调用经验。
 
+### `--reflect --task <text> --outcome <text>`
+
+任务后评估本次结果，让系统判断：任务前经验是否被复用、是否出现失败/纠正信号、是否需要沉淀新候选。
+
+```bash
+node tools/evolution-review.js \
+  --reflect \
+  --task "小红书 内容发布" \
+  --outcome "任务完成但用户纠正：下次必须先检查诱导互动红线"
+```
+
+输出：
+
+- success / failure / correction 信号；
+- prepared lesson reuse 是否被观察到；
+- 是否建议新增 candidate；
+- 可人工复制进 `memory/evolution-os/inbox/` 的 candidate 草案。
+
+注意：`--reflect` 默认只生成评估和候选草案，不自动写入 inbox，不修改核心记忆。
+
+显式加 `--write-candidate` 时，会把低/中风险候选写入 `memory/evolution-os/inbox/`：
+
+```bash
+node tools/evolution-review.js \
+  --reflect \
+  --write-candidate \
+  --task "小红书 内容发布" \
+  --outcome "任务完成但用户纠正：下次必须先检查诱导互动红线"
+```
+
+安全边界：
+
+- 只写 inbox candidate；
+- 不自动 promote；
+- 不修改核心文件；
+- high-risk candidate 仍只输出草案，要求人工 review。
+
 ## 初始化 / 自检
 
 ### `--init`

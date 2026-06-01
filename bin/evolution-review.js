@@ -15,10 +15,14 @@ const CONFIG_FILE = path.join(EVO_DIR, 'config.json');
 
 const argv = process.argv.slice(2);
 const args = new Set(argv);
+const writeCandidate = args.has('--write-candidate');
 const writeReport = args.has('--write-report');
 const json = args.has('--json');
 const help = args.has('--help') || args.has('-h');
 const prepare = args.has('--prepare');
+const reflect = args.has('--reflect');
+const outcomeArgIndex = argv.indexOf('--outcome');
+const outcomeText = outcomeArgIndex >= 0 ? argv[outcomeArgIndex + 1] : '';
 const taskArgIndex = argv.indexOf('--task');
 const taskText = taskArgIndex >= 0 ? argv[taskArgIndex + 1] : '';
 const init = args.has('--init');
@@ -105,6 +109,9 @@ Review:
   --json                         Output JSON
   --write-report                 Write report to memory/evolution-os/reports/
   --prepare --task <text>         Retrieve relevant lessons/checklists before a task
+  --reflect --task <text> --outcome <text>
+                                  Evaluate post-task outcome and suggest capture/promotion
+  --reflect --write-candidate     With --reflect: write safe candidate to inbox
   --self-check                   Check required files, config, and safety boundaries
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --init                         Initialize Evolution OS files/directories if missing
@@ -1978,6 +1985,187 @@ function prepareReport(task) {
   };
 }
 
+function reflectReport(task, outcome) {
+  if (!task || !task.trim()) throw new Error('Missing --task <text>');
+  if (!outcome || !outcome.trim()) throw new Error('Missing --outcome <text>');
+
+  const prepared = prepareReport(task);
+  const outcomeTokens = tokenize(outcome);
+  const successful = /成功|通过|完成|解决|有效|满意|works|pass|passed|done|fixed/i.test(outcome);
+  const failed = /失败|报错|不行|无效|返工|超时|阻塞|failed|error|timeout|blocked|regression/i.test(outcome);
+  const corrected = /纠正|教训|下次|必须|不要|禁止|规则|偏好|hard case|hard-case/i.test(outcome);
+
+  const appliedLessons = prepared.relevantLessons.filter((lesson) => {
+    const lessonTokens = tokenize(lesson.text);
+    for (const token of lessonTokens) if (outcomeTokens.has(token)) return true;
+    return false;
+  });
+
+  const shouldCaptureCandidate = failed || corrected || appliedLessons.length === 0;
+  const suggestedType = failed ? 'failure' : corrected ? 'workflow' : 'hypothesis';
+  const suggestedRisk = /AGENTS\.md|SOUL\.md|权限|调度|发布|训练|上传|delete|permission|scheduler|publish|training|upload/i.test(outcome)
+    ? 'high'
+    : 'medium';
+  const slug = asciiSlug(task) || `task-${shaShort(task)}`;
+  const candidateId = `evo-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12)}-${slug}`;
+
+  return {
+    generatedAt: new Date().toISOString(),
+    task,
+    outcome,
+    preparedLessons: prepared.relevantLessons,
+    appliedLessons,
+    evaluation: {
+      successful,
+      failed,
+      corrected,
+      lessonReuseObserved: appliedLessons.length > 0,
+      shouldCaptureCandidate,
+    },
+    suggestedCandidate: shouldCaptureCandidate
+      ? {
+          id: candidateId,
+          type: suggestedType,
+          source: failed ? 'task-failure' : 'observation',
+          confidence: corrected || failed ? 'high' : 'medium',
+          status: 'candidate',
+          scope: 'global',
+          created: today,
+          decay: failed ? '30d' : '14d',
+          risk: suggestedRisk,
+          signal: outcome,
+          proposedLearning: deriveProposedLearning(task, outcome, prepared.relevantLessons),
+        }
+      : null,
+    nextStep: shouldCaptureCandidate
+      ? 'Write the suggested candidate to memory/evolution-os/inbox/ after human review, then review/promote/archive normally.'
+      : 'No new candidate needed. Existing lessons appear sufficient; keep monitoring for repeat failures.',
+  };
+}
+
+function asciiSlug(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 60);
+}
+
+function deriveProposedLearning(task, outcome, lessons) {
+  const firstRule = String(outcome)
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .find((line) => /必须|不要|禁止|下次|规则|偏好|should|must|never|avoid/i.test(line));
+  if (firstRule) return firstRule.replace(/^[-*]\s*/, '');
+  if (lessons.length) return `For tasks like "${task}", reuse the prepared lessons and verify whether they affected the outcome.`;
+  return `For tasks like "${task}", capture the post-task outcome because no prepared lesson clearly covered it.`;
+}
+
+function renderCandidateMarkdown(c) {
+  const lines = [];
+  lines.push('---');
+  lines.push(`id: ${c.id}`);
+  lines.push(`type: ${c.type}`);
+  lines.push(`source: ${c.source}`);
+  lines.push(`confidence: ${c.confidence}`);
+  lines.push(`status: ${c.status}`);
+  lines.push(`scope: ${c.scope}`);
+  lines.push(`created: ${c.created}`);
+  lines.push(`decay: ${c.decay}`);
+  lines.push(`risk: ${c.risk}`);
+  lines.push('---');
+  lines.push('');
+  lines.push('## Signal');
+  lines.push('');
+  lines.push(c.signal);
+  lines.push('');
+  lines.push('## Proposed Learning');
+  lines.push('');
+  lines.push(c.proposedLearning);
+  lines.push('');
+  lines.push('## Why It Matters');
+  lines.push('');
+  lines.push('It closes the runtime loop: task outcome is evaluated after prepared lessons were used or missed.');
+  lines.push('');
+  lines.push('## Promotion Criteria');
+  lines.push('');
+  lines.push('- The lesson changes future behavior.');
+  lines.push('- It is not duplicated by an existing promoted rule.');
+  lines.push('');
+  lines.push('## Rejection Criteria');
+  lines.push('');
+  lines.push('- The outcome was one-off or not actionable.');
+  lines.push('- The same lesson already exists in a better source.');
+  lines.push('');
+  return lines.join('\n');
+}
+
+function writeReflectCandidate(report) {
+  const candidate = report.suggestedCandidate;
+  if (!candidate) return { written: false, skipped: true, reason: 'no suggested candidate' };
+  if (candidate.risk === 'high') {
+    return { written: false, skipped: true, reason: 'high-risk candidate requires manual review before writing' };
+  }
+  fs.mkdirSync(INBOX_DIR, { recursive: true });
+  const safeId = asciiSlug(candidate.id) || `evo-${shaShort(candidate.id)}`;
+  const relativeFile = `memory/evolution-os/inbox/${safeId}.md`;
+  const out = path.join(ROOT, relativeFile);
+  if (exists(out)) return { written: false, skipped: true, file: relativeFile, reason: 'candidate already exists' };
+  fs.writeFileSync(out, renderCandidateMarkdown(candidate));
+  return { written: true, skipped: false, file: relativeFile };
+}
+
+function renderReflectMarkdown(report) {
+  const lines = [];
+  lines.push(`# Evolution OS Reflect - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push('');
+  lines.push('## Task');
+  lines.push('');
+  lines.push(report.task);
+  lines.push('');
+  lines.push('## Outcome');
+  lines.push('');
+  lines.push(report.outcome);
+  lines.push('');
+  lines.push('## Evaluation');
+  lines.push('');
+  lines.push(`- Successful: ${report.evaluation.successful ? 'yes' : 'no/unknown'}`);
+  lines.push(`- Failed/blocking signal: ${report.evaluation.failed ? 'yes' : 'no'}`);
+  lines.push(`- Correction/rule signal: ${report.evaluation.corrected ? 'yes' : 'no'}`);
+  lines.push(`- Prepared lesson reuse observed: ${report.evaluation.lessonReuseObserved ? 'yes' : 'no'}`);
+  lines.push(`- Capture new candidate: ${report.evaluation.shouldCaptureCandidate ? 'yes' : 'no'}`);
+  lines.push('');
+  lines.push('## Applied Lessons');
+  lines.push('');
+  if (!report.appliedLessons.length) lines.push('- None detected');
+  else {
+    for (const item of report.appliedLessons) {
+      lines.push(`- ${item.text}`);
+      lines.push(`  - Source: ${item.source}#L${item.line}`);
+    }
+  }
+  lines.push('');
+  lines.push('## Suggested Candidate');
+  lines.push('');
+  if (!report.suggestedCandidate) {
+    lines.push('- None');
+  } else {
+    const c = report.suggestedCandidate;
+    lines.push('```markdown');
+    lines.push(renderCandidateMarkdown(c).trimEnd());
+    lines.push('```');
+  }
+  lines.push('');
+  lines.push('## Next Step');
+  lines.push('');
+  lines.push(report.nextStep);
+  lines.push('');
+  return lines.join('\n');
+}
+
 function renderPrepareMarkdown(report) {
   const lines = [];
   lines.push(`# Evolution OS Prepare - ${today}`);
@@ -2083,6 +2271,20 @@ if (help) {
     const report = prepareReport(taskText);
     if (json) console.log(JSON.stringify(report, null, 2));
     else console.log(renderPrepareMarkdown(report));
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+} else if (reflect) {
+  try {
+    const report = reflectReport(taskText, outcomeText);
+    const candidateWrite = writeCandidate ? writeReflectCandidate(report) : null;
+    const payload = candidateWrite ? { ...report, candidateWrite } : report;
+    if (json) console.log(JSON.stringify(payload, null, 2));
+    else {
+      console.log(renderReflectMarkdown(report));
+      if (candidateWrite) console.error(`${candidateWrite.written ? 'Wrote' : 'Skipped'} ${candidateWrite.file || ''}${candidateWrite.reason ? ` (${candidateWrite.reason})` : ''}`);
+    }
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);

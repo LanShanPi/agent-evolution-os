@@ -343,6 +343,14 @@ node tools/evolution-review.js --skill-audit --all-skills --suggest-cleanup-cand
 - [x] `--init` 优先读取 package templates，缺失时回退内嵌模板。
 - [x] 为 skill 审计增加“生成清理候选/归档草案”模式。
 
+### Phase 2.7：Runtime 使用/评估闭环
+
+- [x] 实现 `--prepare --task`，任务前检索相关经验与检查清单。
+- [x] 实现 `--reflect --task --outcome`，任务后评估成功/失败/纠正信号与经验复用情况。
+- [x] 实现 `--reflect --write-candidate`，显式把低/中风险反思写入 inbox candidate。
+- [ ] 增加 reflect → review → promote/archive 的端到端 fixture。
+- [ ] 增加 lesson reuse 统计与后续监控报告。
+
 ### Phase 3：强约束工具
 
 - [ ] 把稳定脚本封装成 OpenClaw tool plugin。
@@ -377,10 +385,10 @@ Evolution OS 目前不会：
 
 ## 10. 下一步推荐动作
 
-进入 Phase 2.5：可复制工具化。
+回到原始目标：先完成 runtime loop，而不是继续包装发布。
 
 优先级：
 
-1. 准备正式 GitHub repo 创建/首次提交；
-2. 对 repo-draft 做一次最终去私有信息扫描；
+1. 增加 reflect → write-candidate → review → promote/archive 的端到端 fixture；
+2. 让 `--prepare` 能读取最近 reflect/promoted 结果，形成“用过/没用过”的反馈；
 3. 再考虑 OpenClaw skill package / plugin 化。

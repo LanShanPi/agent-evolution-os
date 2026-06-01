@@ -110,6 +110,29 @@ node tools/evolution-review.js --prepare --task "write and review a public conte
 
 This is the first runtime step: making previous learning affect future behavior.
 
+After the task, evaluate whether that learning was reused and whether a new lesson should be captured:
+
+```bash
+node tools/evolution-review.js \
+  --reflect \
+  --task "write and review a public content post" \
+  --outcome "Task passed, but user corrected that interaction bait must be checked first next time"
+```
+
+`--reflect` returns success/failure/correction signals, observed lesson reuse, and a candidate draft when the outcome should enter the evolution pipeline. It does not auto-write inbox entries or modify core memory.
+
+When you explicitly want to close the capture loop, add `--write-candidate`:
+
+```bash
+node tools/evolution-review.js \
+  --reflect \
+  --write-candidate \
+  --task "write and review a public content post" \
+  --outcome "Task passed, but user corrected that interaction bait must be checked first next time"
+```
+
+This writes only low/medium risk candidates to `memory/evolution-os/inbox/`. High-risk candidates stay as drafts for manual review. Nothing is promoted automatically.
+
 ## Quickstart in a workspace
 
 Run from the root of your agent workspace:
