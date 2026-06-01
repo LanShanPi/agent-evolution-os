@@ -129,6 +129,14 @@ node tools/evolution-review.js --usage-report
 - 反复被 prepare 但从未 applied 的 stale prepared-only lessons；
 - 下一步：晋升强触发位置，或压缩/归档低使用率规则。
 
+显式加 `--suggest-cleanup-candidates` 时，会为 stale prepared-only lessons 生成 inbox candidate 草案：
+
+```bash
+node tools/evolution-review.js --usage-report --suggest-cleanup-candidates
+```
+
+安全边界：只写 cleanup candidate，不修改原 lesson，不归档、不删除、不 promote。
+
 ## 初始化 / 自检
 
 ### `--init`

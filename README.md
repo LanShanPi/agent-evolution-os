@@ -143,6 +143,14 @@ node tools/evolution-review.js --usage-report
 
 Usage is appended to `memory/evolution-os/runtime/usage-log.jsonl`. The report highlights effective lessons and lessons that are repeatedly prepared but not applied, supporting later promotion, compression, or forgetting.
 
+To turn prepared-but-not-applied lessons into reviewable cleanup candidates:
+
+```bash
+node tools/evolution-review.js --usage-report --suggest-cleanup-candidates
+```
+
+This writes only inbox candidates. It does not modify, archive, delete, or promote the original lessons.
+
 ## Quickstart in a workspace
 
 Run from the root of your agent workspace:

@@ -118,6 +118,8 @@ Review:
   --reflect --write-candidate     With --reflect: write safe candidate to inbox
   --record-usage                  With --prepare/--reflect: append runtime usage-log.jsonl
   --usage-report                  Summarize runtime lesson reuse from usage-log.jsonl
+  --usage-report --suggest-cleanup-candidates
+                                  Draft candidates for lessons prepared but not applied
   --self-check                   Check required files, config, and safety boundaries
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --init                         Initialize Evolution OS files/directories if missing
@@ -1909,6 +1911,14 @@ function runSelfTest() {
   checks.push(assertSelfTest(usage.counts.prepare === 1 && usage.counts.reflect === 1, 'usage ledger records prepare and reflect events', usage.counts));
   checks.push(assertSelfTest(usage.counts.lessons > 0, 'usage report summarizes lesson stats', usage.counts));
 
+  appendUsageLog({ type: 'prepare', task: 'unused stale lesson fixture', relevantLessons: [{ source: 'MEMORY.md', line: 99, text: 'unused stale lesson fixture should be reviewed' }] });
+  const staleUsage = usageReportData();
+  const cleanupDrafts = usageCleanupCandidateDrafts(staleUsage);
+  checks.push(assertSelfTest(staleUsage.counts.stalePreparedOnly > 0, 'usage report detects prepared-but-not-applied lessons', staleUsage.counts));
+  checks.push(assertSelfTest(cleanupDrafts.count > 0, 'usage cleanup drafts are generated for stale lessons', cleanupDrafts));
+  const cleanupWritten = writeUsageCleanupCandidates(cleanupDrafts);
+  checks.push(assertSelfTest(cleanupWritten.some((item) => item.created), 'usage cleanup candidates can be written to inbox', cleanupWritten));
+
   const failed = checks.filter((check) => !check.ok);
   return {
     generatedAt: new Date().toISOString(),
@@ -2221,6 +2231,109 @@ function usageReportData() {
   };
 }
 
+function usageCleanupCandidateForLesson(item, index) {
+  const id = `evo-${today.replace(/-/g, '')}-usage-cleanup-${slugify(item.source)}-${item.line || index + 1}-${index + 1}`;
+  const sourceRef = `${item.source || '?'}#L${item.line || '?'}`;
+  return {
+    id,
+    file: `memory/evolution-os/inbox/${id}.md`,
+    sourceLesson: sourceRef,
+    content: `---
+id: ${id}
+type: hypothesis
+source: review
+confidence: medium
+status: candidate
+scope: global
+created: ${today}
+decay: 14d
+risk: medium
+suggested_targets:
+  - ${item.source || 'memory/evolution-os/archive/'}
+  - memory/evolution-os/archive/
+---
+
+## Signal
+
+Usage report found a lesson that was prepared ${item.prepared} time(s) but applied 0 time(s).
+
+Source: ${sourceRef}
+
+Lesson:
+
+${item.text}
+
+## Proposed Learning
+
+Review whether this lesson should be compressed, retagged with better triggers, moved to a more relevant checklist, or archived if it remains unused.
+
+## Why It Matters
+
+Evolution requires forgetting and cleanup, not just writing more rules. Low-use prepared lessons increase context noise and reduce precision.
+
+## Promotion Criteria
+
+- The lesson is still behavior-changing but needs a better trigger or location.
+- Rewording or relocating it would make future prepare results more useful.
+
+## Rejection Criteria
+
+- The lesson is obsolete, too broad, duplicated, or not actionable.
+- It should be archived instead of promoted.
+`,
+  };
+}
+
+function usageCleanupCandidateDrafts(report) {
+  const drafts = report.stalePreparedOnly.map((item, index) => usageCleanupCandidateForLesson(item, index));
+  return {
+    generatedAt: new Date().toISOString(),
+    count: drafts.length,
+    drafts,
+    boundary: 'Drafts are candidates only. They do not modify source lessons, core memory, or archives automatically.',
+  };
+}
+
+function writeUsageCleanupCandidates(draftReport) {
+  fs.mkdirSync(INBOX_DIR, { recursive: true });
+  const written = [];
+  for (const draft of draftReport.drafts) {
+    const out = path.join(ROOT, draft.file);
+    if (exists(out)) {
+      written.push({ file: draft.file, created: false, skipped: true });
+      continue;
+    }
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, draft.content);
+    written.push({ file: draft.file, created: true, skipped: false });
+  }
+  return written;
+}
+
+function renderUsageCleanupCandidatesMarkdown(report) {
+  const lines = [];
+  lines.push(`# Usage Cleanup Candidate Drafts - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(`Drafts: ${report.count}`);
+  lines.push('');
+  lines.push('## Drafts');
+  lines.push('');
+  if (!report.drafts.length) lines.push('- None');
+  else {
+    for (const draft of report.drafts) {
+      lines.push(`- ${draft.file}`);
+      lines.push(`  - source lesson: ${draft.sourceLesson}`);
+    }
+  }
+  lines.push('');
+  lines.push('## Boundary');
+  lines.push('');
+  lines.push(report.boundary);
+  lines.push('');
+  return lines.join('\n');
+}
+
 function renderUsageReportMarkdown(report) {
   const lines = [];
   lines.push(`# Evolution OS Usage Report - ${today}`);
@@ -2427,7 +2540,16 @@ if (help) {
 } else if (usageReport) {
   try {
     const report = usageReportData();
-    if (json) console.log(JSON.stringify(report, null, 2));
+    if (suggestCleanupCandidates) {
+      const draftReport = usageCleanupCandidateDrafts(report);
+      const written = writeUsageCleanupCandidates(draftReport);
+      const payload = { ...draftReport, written };
+      if (json) console.log(JSON.stringify(payload, null, 2));
+      else {
+        console.log(renderUsageCleanupCandidatesMarkdown(draftReport));
+        for (const item of written) console.error(`${item.created ? 'Wrote' : 'Exists'} ${item.file}`);
+      }
+    } else if (json) console.log(JSON.stringify(report, null, 2));
     else console.log(renderUsageReportMarkdown(report));
   } catch (error) {
     console.error(`ERROR: ${error.message}`);

@@ -350,6 +350,7 @@ node tools/evolution-review.js --skill-audit --all-skills --suggest-cleanup-cand
 - [x] 实现 `--reflect --write-candidate`，显式把低/中风险反思写入 inbox candidate。
 - [x] 增加 reflect → review → promote/archive 的端到端 fixture。
 - [x] 增加 lesson reuse 统计与后续监控报告。
+- [x] 为 prepared-but-not-applied lessons 生成 cleanup candidate，接入遗忘/压缩审查。
 
 ### Phase 3：强约束工具
 
