@@ -9,6 +9,8 @@ const INBOX_DIR = path.join(EVO_DIR, 'inbox');
 const ARCHIVE_DIR = path.join(EVO_DIR, 'archive');
 const PROMOTED_DIR = path.join(EVO_DIR, 'promoted');
 const REPORTS_DIR = path.join(EVO_DIR, 'reports');
+const RUNTIME_DIR = path.join(EVO_DIR, 'runtime');
+const USAGE_LOG_FILE = path.join(RUNTIME_DIR, 'usage-log.jsonl');
 const MEMORY_FILE = path.join(ROOT, 'MEMORY.md');
 const POLICY_FILE = path.join(EVO_DIR, 'policy.md');
 const CONFIG_FILE = path.join(EVO_DIR, 'config.json');
@@ -16,6 +18,8 @@ const CONFIG_FILE = path.join(EVO_DIR, 'config.json');
 const argv = process.argv.slice(2);
 const args = new Set(argv);
 const writeCandidate = args.has('--write-candidate');
+const recordUsage = args.has('--record-usage');
+const usageReport = args.has('--usage-report');
 const writeReport = args.has('--write-report');
 const json = args.has('--json');
 const help = args.has('--help') || args.has('-h');
@@ -112,6 +116,8 @@ Review:
   --reflect --task <text> --outcome <text>
                                   Evaluate post-task outcome and suggest capture/promotion
   --reflect --write-candidate     With --reflect: write safe candidate to inbox
+  --record-usage                  With --prepare/--reflect: append runtime usage-log.jsonl
+  --usage-report                  Summarize runtime lesson reuse from usage-log.jsonl
   --self-check                   Check required files, config, and safety boundaries
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --init                         Initialize Evolution OS files/directories if missing
@@ -1895,6 +1901,14 @@ function runSelfTest() {
   const highRiskWrite = writeReflectCandidate(highRiskReflect);
   checks.push(assertSelfTest(!highRiskWrite.written && highRiskWrite.reason.includes('high-risk'), '--reflect --write-candidate blocks high-risk candidate writes', highRiskWrite));
 
+  const prepareForUsage = prepareReport('workflow step command check result');
+  appendUsageLog({ type: 'prepare', task: prepareForUsage.task, relevantLessons: prepareForUsage.relevantLessons });
+  const reflectForUsage = reflectReport('workflow step command check result', 'Task passed after applying workflow step command check result.');
+  appendUsageLog({ type: 'reflect', task: reflectForUsage.task, outcome: reflectForUsage.outcome, appliedLessons: reflectForUsage.appliedLessons, candidateCreated: Boolean(reflectForUsage.suggestedCandidate) });
+  const usage = usageReportData();
+  checks.push(assertSelfTest(usage.counts.prepare === 1 && usage.counts.reflect === 1, 'usage ledger records prepare and reflect events', usage.counts));
+  checks.push(assertSelfTest(usage.counts.lessons > 0, 'usage report summarizes lesson stats', usage.counts));
+
   const failed = checks.filter((check) => !check.ok);
   return {
     generatedAt: new Date().toISOString(),
@@ -2132,6 +2146,119 @@ function renderCandidateMarkdown(c) {
   return lines.join('\n');
 }
 
+function appendUsageLog(event) {
+  fs.mkdirSync(RUNTIME_DIR, { recursive: true });
+  fs.appendFileSync(USAGE_LOG_FILE, `${JSON.stringify({ timestamp: new Date().toISOString(), ...event })}\n`);
+}
+
+function loadUsageLog() {
+  if (!exists(USAGE_LOG_FILE)) return [];
+  return readText(USAGE_LOG_FILE)
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch (error) {
+        return { type: 'parse-error', raw: line, error: error.message };
+      }
+    });
+}
+
+function lessonKey(lesson) {
+  if (!lesson) return '(unknown)';
+  return `${lesson.source || '?'}#L${lesson.line || '?'}:${shaShort(lesson.text || '')}`;
+}
+
+function usageReportData() {
+  const events = loadUsageLog();
+  const prepareEvents = events.filter((event) => event.type === 'prepare');
+  const reflectEvents = events.filter((event) => event.type === 'reflect');
+  const lessons = new Map();
+
+  for (const event of prepareEvents) {
+    for (const lesson of event.relevantLessons || []) {
+      const key = lessonKey(lesson);
+      const record = lessons.get(key) || { key, source: lesson.source, line: lesson.line, text: lesson.text, prepared: 0, applied: 0 };
+      record.prepared += 1;
+      lessons.set(key, record);
+    }
+  }
+
+  for (const event of reflectEvents) {
+    for (const lesson of event.appliedLessons || []) {
+      const key = lessonKey(lesson);
+      const record = lessons.get(key) || { key, source: lesson.source, line: lesson.line, text: lesson.text, prepared: 0, applied: 0 };
+      record.applied += 1;
+      lessons.set(key, record);
+    }
+  }
+
+  const lessonStats = [...lessons.values()].sort((a, b) => b.prepared - a.prepared || b.applied - a.applied || a.key.localeCompare(b.key));
+  const stalePreparedOnly = lessonStats.filter((item) => item.prepared > 0 && item.applied === 0);
+  const effective = lessonStats.filter((item) => item.applied > 0);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    logFile: path.relative(ROOT, USAGE_LOG_FILE),
+    counts: {
+      events: events.length,
+      prepare: prepareEvents.length,
+      reflect: reflectEvents.length,
+      parseErrors: events.filter((event) => event.type === 'parse-error').length,
+      lessons: lessonStats.length,
+      effectiveLessons: effective.length,
+      stalePreparedOnly: stalePreparedOnly.length,
+    },
+    lessonStats,
+    effective,
+    stalePreparedOnly,
+    nextSuggestedActions: [
+      stalePreparedOnly.length ? 'Review lessons repeatedly prepared but never applied; compress, retag, or archive if they stay unused.' : 'No stale prepared-only lessons yet.',
+      effective.length ? 'Consider promoting repeatedly applied lessons to stronger trigger/checklist locations.' : 'No applied lesson reuse observed yet; keep recording reflect outcomes.',
+    ],
+  };
+}
+
+function renderUsageReportMarkdown(report) {
+  const lines = [];
+  lines.push(`# Evolution OS Usage Report - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(`Log: ${report.logFile}`);
+  lines.push('');
+  lines.push('## Counts');
+  lines.push('');
+  for (const [key, value] of Object.entries(report.counts)) lines.push(`- ${key}: ${value}`);
+  lines.push('');
+  lines.push('## Effective Lessons');
+  lines.push('');
+  if (!report.effective.length) lines.push('- None');
+  else {
+    for (const item of report.effective.slice(0, 10)) {
+      lines.push(`- prepared=${item.prepared}, applied=${item.applied}: ${item.text}`);
+      lines.push(`  - Source: ${item.source}#L${item.line}`);
+    }
+  }
+  lines.push('');
+  lines.push('## Prepared But Not Applied');
+  lines.push('');
+  if (!report.stalePreparedOnly.length) lines.push('- None');
+  else {
+    for (const item of report.stalePreparedOnly.slice(0, 10)) {
+      lines.push(`- prepared=${item.prepared}, applied=0: ${item.text}`);
+      lines.push(`  - Source: ${item.source}#L${item.line}`);
+    }
+  }
+  lines.push('');
+  lines.push('## Next Suggested Actions');
+  lines.push('');
+  for (const action of report.nextSuggestedActions) lines.push(`- ${action}`);
+  lines.push('');
+  return lines.join('\n');
+}
+
 function writeReflectCandidate(report) {
   const candidate = report.suggestedCandidate;
   if (!candidate) return { written: false, skipped: true, reason: 'no suggested candidate' };
@@ -2297,9 +2424,19 @@ function renderMarkdown(report) {
 
 if (help) {
   console.log(renderHelp());
+} else if (usageReport) {
+  try {
+    const report = usageReportData();
+    if (json) console.log(JSON.stringify(report, null, 2));
+    else console.log(renderUsageReportMarkdown(report));
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
 } else if (prepare) {
   try {
     const report = prepareReport(taskText);
+    if (recordUsage) appendUsageLog({ type: 'prepare', task: report.task, relevantLessons: report.relevantLessons, applyChecklist: report.applyChecklist, gaps: report.gaps });
     if (json) console.log(JSON.stringify(report, null, 2));
     else console.log(renderPrepareMarkdown(report));
   } catch (error) {
@@ -2310,6 +2447,7 @@ if (help) {
   try {
     const report = reflectReport(taskText, outcomeText);
     const candidateWrite = writeCandidate ? writeReflectCandidate(report) : null;
+    if (recordUsage) appendUsageLog({ type: 'reflect', task: report.task, outcome: report.outcome, appliedLessons: report.appliedLessons, evaluation: report.evaluation, candidateCreated: Boolean(candidateWrite?.written), candidateFile: candidateWrite?.file || null });
     const payload = candidateWrite ? { ...report, candidateWrite } : report;
     if (json) console.log(JSON.stringify(payload, null, 2));
     else {

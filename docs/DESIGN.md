@@ -348,8 +348,8 @@ node tools/evolution-review.js --skill-audit --all-skills --suggest-cleanup-cand
 - [x] 实现 `--prepare --task`，任务前检索相关经验与检查清单。
 - [x] 实现 `--reflect --task --outcome`，任务后评估成功/失败/纠正信号与经验复用情况。
 - [x] 实现 `--reflect --write-candidate`，显式把低/中风险反思写入 inbox candidate。
-- [ ] 增加 reflect → review → promote/archive 的端到端 fixture。
-- [ ] 增加 lesson reuse 统计与后续监控报告。
+- [x] 增加 reflect → review → promote/archive 的端到端 fixture。
+- [x] 增加 lesson reuse 统计与后续监控报告。
 
 ### Phase 3：强约束工具
 

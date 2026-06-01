@@ -133,6 +133,16 @@ node tools/evolution-review.js \
 
 This writes only low/medium risk candidates to `memory/evolution-os/inbox/`. High-risk candidates stay as drafts for manual review. Nothing is promoted automatically.
 
+To evaluate whether lessons are actually reused over time, record prepare/reflect events:
+
+```bash
+node tools/evolution-review.js --prepare --task "write and review a public content post" --record-usage
+node tools/evolution-review.js --reflect --task "write and review a public content post" --outcome "Task passed after applying checklist" --record-usage
+node tools/evolution-review.js --usage-report
+```
+
+Usage is appended to `memory/evolution-os/runtime/usage-log.jsonl`. The report highlights effective lessons and lessons that are repeatedly prepared but not applied, supporting later promotion, compression, or forgetting.
+
 ## Quickstart in a workspace
 
 Run from the root of your agent workspace:

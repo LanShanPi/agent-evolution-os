@@ -101,6 +101,34 @@ node tools/evolution-review.js \
 - 不修改核心文件；
 - high-risk candidate 仍只输出草案，要求人工 review。
 
+### `--record-usage` 与 `--usage-report`
+
+`--record-usage` 可与 `--prepare` / `--reflect` 一起使用，把 runtime 使用情况追加到：
+
+```text
+memory/evolution-os/runtime/usage-log.jsonl
+```
+
+示例：
+
+```bash
+node tools/evolution-review.js --prepare --task "public content publishing" --record-usage
+node tools/evolution-review.js --reflect --task "public content publishing" --outcome "Task done after applying checklist" --record-usage
+```
+
+查看 lesson reuse 报告：
+
+```bash
+node tools/evolution-review.js --usage-report
+```
+
+报告会列出：
+
+- prepare / reflect 事件数量；
+- 被准备且被 outcome 复用的 effective lessons；
+- 反复被 prepare 但从未 applied 的 stale prepared-only lessons；
+- 下一步：晋升强触发位置，或压缩/归档低使用率规则。
+
 ## 初始化 / 自检
 
 ### `--init`
