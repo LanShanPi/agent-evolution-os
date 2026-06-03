@@ -112,12 +112,27 @@ Protocol  →  Skill  →  Review/Draft Tool  →  Future Plugin
 - 归档/回滚；
 - 变更审计日志。
 
+### 3.6 Runtime Loop：运行时闭环
+
+位置：`memory/evolution-os/RUNTIME_LOOP.md`
+
+负责定义 Evolution OS 从“安全沉淀经验”进入“验证经验是否影响未来行为”的运行时机制：
+
+- `prepare`：任务前检索相关经验并生成 apply checklist；
+- `reflect`：任务后判断经验是否被应用、是否产生新纠正/失败/模式；
+- `usage-report`：跨任务统计 lesson 的 prepared/applied/ignored/contradicted 信号；
+- 将 effective/stale/harmful lesson 转换为 promotion/cleanup/revise candidate；
+- 明确 `usage-log.jsonl` 不是 training corpus，训练样本必须额外蒸馏、审查、脱敏。
+
+治理模式回答“经验能否安全进入系统”；运行时模式回答“经验是否真的改善未来行为”。二者合在一起，Evolution OS 才构成自进化代谢系统。
+
 ## 4. 目录结构
 
 ```text
 memory/evolution-os/
   README.md
   DESIGN.md
+  RUNTIME_LOOP.md
   policy.md
   inbox/
   promoted/
@@ -135,6 +150,7 @@ tools/
 
 说明：
 
+- `RUNTIME_LOOP.md`：运行时自进化闭环理论，定义 Governance Mode 与 Runtime Mode、prepare/reflect/usage-report、usage log 与训练语料边界。
 - `inbox/`：候选经验默认入口。
 - `promoted/`：晋升草案和晋升记录。
 - `archive/`：过期、拒绝、合并、降级的内容。
@@ -176,6 +192,7 @@ candidate → validated → promoted → monitored → archived
 - `memory/evolution-os/REPO_PLAN.md`
 - `memory/evolution-os/CHANGELOG.md`
 - `memory/evolution-os/VERSION`
+- `memory/evolution-os/RUNTIME_LOOP.md`
 - `memory/evolution-os/policy.md`
 - `memory/evolution-os/config.json`
 - `memory/evolution-os/examples/README.md`
@@ -299,6 +316,7 @@ node tools/evolution-review.js --skill-audit --all-skills --suggest-cleanup-cand
 - self-check 已实现，可验证必要文件/目录/config/安全边界；
 - self-test 已实现，可用 fixture 验证 init/review/decay/duplicate/archive/memory/skill 审计主链路；
 - 产品化文档已建立，已补 `INSTALL.md` / `QUICKSTART.md` / `COMMANDS.md`；
+- Runtime Loop 理论文档已新增，明确 Governance Mode 与 Runtime Mode 的分工、运行时状态机、lesson reuse metrics、effective/stale/harmful 判断、usage log 与 training-corpus 边界；
 - 下一步做 GitHub repo/package 结构整理；
 - 暂不自动应用核心文件变更。
 
@@ -343,17 +361,6 @@ node tools/evolution-review.js --skill-audit --all-skills --suggest-cleanup-cand
 - [x] `--init` 优先读取 package templates，缺失时回退内嵌模板。
 - [x] 为 skill 审计增加“生成清理候选/归档草案”模式。
 
-### Phase 2.7：Runtime 使用/评估闭环
-
-- [x] 实现 `--prepare --task`，任务前检索相关经验与检查清单。
-- [x] 实现 `--reflect --task --outcome`，任务后评估成功/失败/纠正信号与经验复用情况。
-- [x] 实现 `--reflect --write-candidate`，显式把低/中风险反思写入 inbox candidate。
-- [x] 增加 reflect → review → promote/archive 的端到端 fixture。
-- [x] 增加 lesson reuse 统计与后续监控报告。
-- [x] 为 prepared-but-not-applied lessons 生成 cleanup candidate，接入遗忘/压缩审查。
-- [x] 增加 cleanup threshold，默认 prepared >= 3 且 applied = 0 才建议 cleanup。
-- [x] 增加 effective promotion threshold，默认 applied >= 3 才建议强化触发位置。
-
 ### Phase 3：强约束工具
 
 - [ ] 把稳定脚本封装成 OpenClaw tool plugin。
@@ -388,11 +395,10 @@ Evolution OS 目前不会：
 
 ## 10. 下一步推荐动作
 
-回到原始目标：先完成 runtime loop，而不是继续包装发布。
+进入 Phase 2.5：可复制工具化。
 
 优先级：
 
-1. 实现 active evolution layer：例如 `memory/evolution-os/runtime/active-lessons.md` 或 `active-lessons.json`，作为不污染核心文件但能直接影响 `--prepare` 的活跃经验层；
-2. 增加 active layer 的 promote/apply 草案：low/medium risk 经人工确认后进入 active layer，high risk 只出草案；
-3. 让 `--prepare` 默认读取 active layer，并在 `--usage-report` 里统计 active lessons 的 applied / stale 状态；
-4. 再考虑 OpenClaw skill package / plugin 化。
+1. 准备正式 GitHub repo 创建/首次提交；
+2. 对 repo-draft 做一次最终去私有信息扫描；
+3. 再考虑 OpenClaw skill package / plugin 化。

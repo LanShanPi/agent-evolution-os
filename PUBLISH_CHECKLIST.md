@@ -25,8 +25,8 @@ Expected: no private user/workspace references.
 Confirm `npm pack --dry-run` includes only expected files:
 
 - `bin/`
-- `docs/`
-- `templates/`
+- `docs/` including `RUNTIME_LOOP.md`
+- `templates/` including `templates/memory/evolution-os/RUNTIME_LOOP.md`
 - `examples/`
 - `README.md`
 - `CHANGELOG.md`
@@ -75,7 +75,7 @@ npm publish
 - init/self-check/self-test;
 - templates;
 - examples;
-- docs;
+- docs, including Runtime Loop theory;
 - no automatic apply;
 - no deletion;
 - no uploads;

@@ -2,10 +2,11 @@
 
 Auditable self-evolution governance for long-running AI agents.
 
-Evolution OS helps agents capture lessons without polluting core memory. It turns durable learning into a governed flow:
+Evolution OS helps agents capture lessons without polluting core memory. It turns durable learning into two connected loops:
 
 ```text
-capture → candidate → review → promote/archive draft → manual apply → verify → distill/forget
+Governance: capture → candidate → review → promote/archive draft → manual apply → verify → distill/forget
+Runtime:    prepare → task execution → reflect → usage report → reinforce/revise/cleanup candidate
 ```
 
 It is designed for people running long-lived AI agents with memory files, skills, project notes, or future training-data pipelines.
@@ -91,6 +92,17 @@ This draft includes a `bin` entry:
 
 The package is not published to npm yet. Until then, use clone/copy or a local checkout.
 
+## Runtime loop theory
+
+The runtime loop is documented in [`docs/RUNTIME_LOOP.md`](docs/RUNTIME_LOOP.md).
+
+Short version:
+
+- Governance Mode answers: “Can this lesson safely enter the system?”
+- Runtime Mode answers: “Did this lesson actually improve future behavior?”
+- `usage-log.jsonl` is audit evidence, not training data.
+- Training samples require separate distillation, privacy/safety review, and explicit inclusion in `training-corpus/`.
+
 ## Runtime loop MVP
 
 Evolution OS is moving beyond review/draft governance into a runtime self-evolution loop.
@@ -175,6 +187,7 @@ This creates the Evolution OS file structure if missing:
 memory/evolution-os/
   README.md
   DESIGN.md
+  RUNTIME_LOOP.md
   policy.md
   config.json
   inbox/

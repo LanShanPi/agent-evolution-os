@@ -6,6 +6,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Added
 
+- `RUNTIME_LOOP.md` to define Governance Mode vs Runtime Mode, prepare/reflect/usage-report responsibilities, runtime lesson state transitions, lesson reuse metrics, and the boundary between usage logs and training corpus.
 - `--prepare --task <text>` to retrieve relevant lessons before a task and produce an apply checklist.
 - File-system based Evolution OS MVP.
 - Candidate inbox, promoted log, archive, reports, schemas, training-corpus directories.
@@ -36,6 +37,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Not Yet Included
 
+- Runtime loop docs/templates copied into repo-draft docs/templates consistently.
 - npm package structure draft.
 - GitHub Actions draft.
 - OpenClaw tool plugin.
