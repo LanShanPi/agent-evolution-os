@@ -142,6 +142,18 @@ Protocol  →  Skill  →  Review/Draft Tool  →  Future Plugin
 
 默认原则：低风险可自动，中风险生成草案或保守写入，高风险必须确认。文件系统版提供软约束和审计，plugin 只机械化已验证协议，参数训练只能使用经过 usage evidence、蒸馏、隐私/安全/质量检查后的样本。
 
+### 3.8 Host Integration：宿主集成
+
+位置：`memory/evolution-os/HOST_INTEGRATION.md`
+
+负责定义 Evolution OS 如何从旁路文档变成宿主 Agent 的行为入口：
+
+- Level 1：Core Entry + self-evolution-governor skill，当前可用；
+- Level 2：beforeTask / afterTask / periodicUsage runtime hooks，让系统自动调用 prepare/reflect/usage-report；
+- Level 3：plugin guardrails，提供写入前备份、diff、风险拦截、状态迁移和回滚。
+
+核心原则：核心文件只保留入口，Evolution OS 承载治理、检索、反思和代谢。自进化是否有效，不看写了多少文件，而看经验是否在未来任务中被稳定取回、应用、评估和修订。
+
 ## 4. 目录结构
 
 ```text
