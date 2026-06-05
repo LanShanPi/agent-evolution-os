@@ -267,14 +267,14 @@ The scaffold exposes command-based integration first:
 /evolution usage
 ```
 
-It does not enable automatic typed lifecycle hooks yet.
+Automatic typed lifecycle hooks are available but disabled by default.
 
 
 ## Optional automatic OpenClaw hooks
 
 The plugin includes typed hooks based on real OpenClaw hook names:
 
-- `before_prompt_build` for bounded prepare context injection;
+- `agent_turn_prepare` for bounded same-turn prepare context injection;
 - `agent_end` for post-turn reflection.
 
 They are disabled by default. To enable after reviewing the boundary, configure:
@@ -293,6 +293,7 @@ They are disabled by default. To enable after reviewing the boundary, configure:
         "hooks": {
           "allowConversationAccess": true,
           "timeouts": {
+            "agent_turn_prepare": 30000,
             "before_prompt_build": 30000,
             "agent_end": 30000
           }

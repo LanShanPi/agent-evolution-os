@@ -33,7 +33,7 @@ See `docs/INSTALL.md`, `docs/HOST_INTEGRATION.md`, and `docs/OPENCLAW_INTEGRATIO
 2. **Workspace templates**: `memory/evolution-os/` policy, docs, schemas, and runtime directories.
 3. **Agent adapter**: `self-evolution-governor`, installed into a skills directory so an agent knows when to call Evolution OS. This is not a separate project.
 4. **Host integration docs**: how to connect Evolution OS to OpenClaw or another agent runtime.
-5. **OpenClaw plugin scaffold**: `plugins/openclaw-evolution-os/` for command-based host integration now, future automatic lifecycle hooks and guardrails.
+5. **OpenClaw plugin scaffold**: `plugins/openclaw-evolution-os/` for command bridge plus optional `agent_turn_prepare` / `agent_end` runtime hooks, disabled by default.
 
 The agent adapter exists because current agent runtimes need a semantic trigger layer. The project remains a single package.
 
@@ -76,7 +76,7 @@ This repo includes an early OpenClaw plugin scaffold under:
 plugins/openclaw-evolution-os/
 ```
 
-It currently provides a native plugin manifest and command bridge:
+It provides a native plugin manifest, command bridge, and optional runtime hooks:
 
 ```text
 /evolution before <task>

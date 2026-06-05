@@ -6,7 +6,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Added
 
-- Optional OpenClaw typed lifecycle hooks in the plugin scaffold: `before_prompt_build` for bounded prepare context and `agent_end` for post-turn reflection, both disabled by default.
+- Optional OpenClaw typed lifecycle hooks in the plugin scaffold: `agent_turn_prepare` for bounded same-turn prepare context and `agent_end` for post-turn reflection, both disabled by default.
 - Initial `plugins/openclaw-evolution-os/` scaffold with native OpenClaw manifest, command bridge, safe defaults, and plugin syntax check wired into verify.
 - Renamed installation docs around the semantic trigger layer from “skill” to “agent adapter”; added `--install-adapter` as the primary command while keeping `--install-skill` as an alias.
 - `--install-skill` command and expanded GitHub installation docs for clone/npm/global usage.

@@ -94,7 +94,7 @@ function runKey(ctx, event = {}) {
   return ctx?.runId || event?.runId || ctx?.sessionKey || "unknown-run";
 }
 
-async function handleBeforePromptBuild(event, ctx, api) {
+async function handleAgentTurnPrepare(event, ctx, api) {
   const cfg = getConfig(api);
   if (!cfg.enabled || !cfg.autoBeforeTask) return undefined;
   const task = String(event?.prompt || "").trim();
@@ -114,7 +114,32 @@ async function handleBeforePromptBuild(event, ctx, api) {
     if (!prependContext.trim()) return undefined;
     return { prependContext };
   } catch (error) {
-    api.logger?.warn?.(`openclaw-evolution-os before_prompt_build failed: ${String(error?.message || error)}`);
+    api.logger?.warn?.(`openclaw-evolution-os agent_turn_prepare failed: ${String(error?.message || error)}`);
+    return undefined;
+  }
+}
+
+async function handleBeforePromptBuild(event, ctx, api) {
+  const cfg = getConfig(api);
+  if (!cfg.enabled || !cfg.autoBeforeTask || cfg.useBeforePromptBuildFallback !== true) return undefined;
+  const task = String(event?.prompt || "").trim();
+  if (!task) return undefined;
+  const cwd = ctx?.workspaceDir || process.cwd();
+  try {
+    const result = await beforeTask({ task, pluginConfig: cfg, cwd });
+    const payload = parseJsonStdout(result.stdout);
+    const key = runKey(ctx, event);
+    runState.set(key, {
+      task,
+      preparedAt: new Date().toISOString(),
+      preparePayload: payload,
+    });
+    if (ctx?.runId) api.runContext?.setRunContext?.({ runId: ctx.runId, namespace: "openclaw-evolution-os", value: { task, preparedAt: new Date().toISOString() } });
+    const prependContext = formatPrepareContext(payload, cfg);
+    if (!prependContext.trim()) return undefined;
+    return { prependContext };
+  } catch (error) {
+    api.logger?.warn?.(`openclaw-evolution-os before_prompt_build fallback failed: ${String(error?.message || error)}`);
     return undefined;
   }
 }
@@ -148,15 +173,22 @@ export default definePluginEntry({
   name: "OpenClaw Evolution OS",
   description: "Host integration adapter for agent-evolution-os runtime hooks.",
   register(api) {
-    api.on?.("before_prompt_build", (event, ctx) => handleBeforePromptBuild(event, ctx, api), {
+    api.on?.("agent_turn_prepare", (event, ctx) => handleAgentTurnPrepare(event, ctx, api), {
       priority: -50,
       timeoutMs: 30000,
     });
 
-    api.on?.("agent_end", (event, ctx) => handleAgentEnd(event, ctx, api), {
-      priority: -50,
+    api.on?.("before_prompt_build", (event, ctx) => handleBeforePromptBuild(event, ctx, api), {
+      priority: -60,
       timeoutMs: 30000,
     });
+
+    if (api.pluginConfig?.registerAgentEndHook === true || getConfig(api).autoAfterTask === true) {
+      api.on?.("agent_end", (event, ctx) => handleAgentEnd(event, ctx, api), {
+        priority: -50,
+        timeoutMs: 30000,
+      });
+    }
 
     api.lifecycle?.registerRuntimeLifecycle?.({
       id: "openclaw-evolution-os-runtime-state",
@@ -168,8 +200,9 @@ export default definePluginEntry({
     api.registerCommand?.({
       name: "evolution",
       description: "Run Evolution OS host integration commands.",
-      async execute(ctx = {}) {
-        const args = Array.isArray(ctx.args) ? ctx.args : [];
+      acceptsArgs: true,
+      async handler(ctx = {}) {
+        const args = typeof ctx.args === "string" ? ctx.args.trim().split(/\s+/).filter(Boolean) : Array.isArray(ctx.args) ? ctx.args : [];
         const subcommand = args[0] || "status";
         const workspaceDir = ctx.workspaceDir || api.config?.workspace?.dir || process.cwd();
         const pluginConfig = getConfig(api);
@@ -202,8 +235,9 @@ export default definePluginEntry({
             "- /evolution after <task> -- <outcome>",
             "- /evolution usage",
             "Automatic hooks:",
-            "- before_prompt_build -> evolution-review --before-task (when autoBeforeTask=true)",
-            "- agent_end -> evolution-review --after-task (when autoAfterTask=true)",
+            "- agent_turn_prepare -> evolution-review --before-task (when autoBeforeTask=true)",
+            "- before_prompt_build fallback -> evolution-review --before-task (only when useBeforePromptBuildFallback=true)",
+            "- agent_end -> evolution-review --after-task (when registerAgentEndHook=true + autoAfterTask=true + allowConversationAccess=true)",
             "Config:",
             jsonText({
               enabled: pluginConfig.enabled,
@@ -218,6 +252,6 @@ export default definePluginEntry({
       },
     });
 
-    api.logger?.info?.("openclaw-evolution-os loaded; command bridge and optional typed hooks registered");
+    api.logger?.info?.("openclaw-evolution-os loaded; command bridge and optional agent_turn_prepare/agent_end hooks registered");
   },
 });

@@ -8,7 +8,7 @@ Current scaffold:
 - runtime entry using `definePluginEntry`;
 - command bridge for manual host calls;
 - safe config defaults;
-- optional typed lifecycle hooks using `before_prompt_build` and `agent_end`, disabled by default.
+- optional typed lifecycle hooks using `agent_turn_prepare` and `agent_end`, disabled by default.
 
 Commands exposed by the scaffold:
 
@@ -72,6 +72,7 @@ The scaffold now registers conservative typed hooks, but they are disabled unles
         "hooks": {
           "allowConversationAccess": true,
           "timeouts": {
+            "agent_turn_prepare": 30000,
             "before_prompt_build": 30000,
             "agent_end": 30000
           }
@@ -84,8 +85,9 @@ The scaffold now registers conservative typed hooks, but they are disabled unles
 
 Hook behavior:
 
-- `before_prompt_build`: runs `evolution-review --before-task --json`, records usage, and injects a short `prependContext` checklist.
+- `agent_turn_prepare`: runs `evolution-review --before-task --json`, records usage, and injects a same-turn short `prependContext` checklist before prompt hooks.
 - `agent_end`: runs `evolution-review --after-task --json` using run outcome and bounded assistant text.
+- `before_prompt_build`: fallback prepare hook only when `useBeforePromptBuildFallback=true`.
 
 Safety defaults:
 

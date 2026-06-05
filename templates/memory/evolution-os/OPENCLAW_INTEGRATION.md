@@ -490,7 +490,8 @@ openclaw evolution status
 
 The scaffold now uses hook names confirmed from OpenClaw docs and type definitions:
 
-- `before_prompt_build`: returns `prependContext` with a bounded Evolution OS prepare checklist.
+- `agent_turn_prepare`: returns `prependContext` with a bounded same-turn Evolution OS prepare checklist.
+- `before_prompt_build`: optional fallback only when `useBeforePromptBuildFallback=true`.
 - `agent_end`: observes final run outcome and calls Evolution OS reflect.
 
 Important config boundary:

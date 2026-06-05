@@ -23,12 +23,17 @@
       "autoBeforeTask": {
         "type": "boolean",
         "default": false,
-        "description": "Future typed-hook integration: run before-task automatically. Default false in scaffold."
+        "description": "Run before-task automatically from the agent_turn_prepare hook. Default false."
       },
       "autoAfterTask": {
         "type": "boolean",
         "default": false,
-        "description": "Future typed-hook integration: run after-task automatically. Default false in scaffold."
+        "description": "Run after-task automatically from the agent_end hook. Default false."
+      },
+      "useBeforePromptBuildFallback": {
+        "type": "boolean",
+        "default": false,
+        "description": "Also register before_prompt_build as a fallback prepare hook. Usually not needed because agent_turn_prepare is earlier and more precise."
       },
       "writeCandidate": {
         "type": "boolean",
