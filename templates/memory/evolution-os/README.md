@@ -9,7 +9,7 @@ From a target agent workspace:
 ```bash
 npm install github:LanShanPi/agent-evolution-os
 npx evolution-review --init
-npx evolution-review --install-skill
+npx evolution-review --install-adapter
 npx evolution-review --self-check
 ```
 
@@ -24,6 +24,18 @@ npx evolution-review --periodic-usage
 ```
 
 See `docs/INSTALL.md`, `docs/HOST_INTEGRATION.md`, and `docs/OPENCLAW_INTEGRATION.md`.
+
+## Product Shape
+
+`agent-evolution-os` is one project with multiple integration layers:
+
+1. **CLI**: `evolution-review` for init, review, runtime hooks, reports, and audits.
+2. **Workspace templates**: `memory/evolution-os/` policy, docs, schemas, and runtime directories.
+3. **Agent adapter**: `self-evolution-governor`, installed into a skills directory so an agent knows when to call Evolution OS. This is not a separate project.
+4. **Host integration docs**: how to connect Evolution OS to OpenClaw or another agent runtime.
+5. **Future plugin**: `openclaw-evolution-os` for automatic lifecycle integration and guardrails.
+
+The agent adapter exists because current agent runtimes need a semantic trigger layer. The project remains a single package.
 
 ## 目录
 

@@ -13,7 +13,7 @@ node tools/evolution-review.js --init
 然后安装 skill（默认写入 `~/.agents/skills/self-evolution-governor/SKILL.md`，不会覆盖已有文件）：
 
 ```bash
-evolution-review --install-skill
+evolution-review --install-adapter
 ```
 
 然后在 workspace 根目录运行：

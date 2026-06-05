@@ -37,7 +37,7 @@ const init = args.has('--init');
 const initConfig = args.has('--init-config');
 const selfCheck = args.has('--self-check');
 const selfTest = args.has('--self-test');
-const installSkill = args.has('--install-skill');
+const installSkill = args.has('--install-skill') || args.has('--install-adapter');
 const skillDirArgIndex = argv.indexOf('--skill-dir');
 const skillDirArg = skillDirArgIndex >= 0 ? argv[skillDirArgIndex + 1] : '';
 const suggestPromotionCandidates = args.has('--suggest-promotion-candidates');
@@ -146,9 +146,10 @@ Runtime hooks:
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --init                         Initialize Evolution OS files/directories if missing
   --init-config                  Create memory/evolution-os/config.json if missing
-  --install-skill                Install self-evolution-governor skill if missing
-  --install-skill --skill-dir <dir>
-                                  Install skill under a custom skills directory
+  --install-adapter              Install the agent adapter (self-evolution-governor skill) if missing
+  --install-adapter --skill-dir <dir>
+                                  Install adapter under a custom skills directory
+  --install-skill                Alias for --install-adapter (backward compatible)
 
 Candidates:
   --candidate <id-or-file>       Select an inbox candidate
@@ -442,7 +443,7 @@ function renderInitMarkdown(report) {
   return lines.join('\n');
 }
 
-function installSelfEvolutionSkill(targetSkillsDir = '') {
+function installAgentAdapter(targetSkillsDir = '') {
   const skillsRoot = targetSkillsDir || path.join(os.homedir(), '.agents', 'skills');
   const targetDir = path.join(skillsRoot, 'self-evolution-governor');
   const targetFile = path.join(targetDir, 'SKILL.md');
@@ -453,7 +454,7 @@ function installSelfEvolutionSkill(targetSkillsDir = '') {
       created: false,
       file: targetFile,
       source: 'existing-file',
-      boundary: 'Install-skill never overwrites an existing skill file.',
+      boundary: 'Install-adapter never overwrites an existing adapter/skill file.',
       nextSuggestedActions: ['Use the self-evolution-governor skill for corrections, failures, repeated workflows, and durable memory/skill changes.'],
     };
   }
@@ -464,14 +465,14 @@ function installSelfEvolutionSkill(targetSkillsDir = '') {
     created: true,
     file: targetFile,
     source: template.source,
-    boundary: 'Install-skill creates only the missing self-evolution-governor skill; it does not edit core files.',
+    boundary: 'Install-adapter creates only the missing self-evolution-governor agent adapter; it does not edit core files.',
     nextSuggestedActions: ['Add a short Evolution OS entry to your host AGENTS.md/system prompt.', 'Run evolution-review --before-task/--after-task around durable work.'],
   };
 }
 
-function renderInstallSkillMarkdown(report) {
+function renderInstallAdapterMarkdown(report) {
   const lines = [];
-  lines.push(`# Evolution OS Skill Install - ${today}`);
+  lines.push(`# Evolution OS Agent Adapter Install - ${today}`);
   lines.push('');
   lines.push(`Generated: ${report.generatedAt}`);
   lines.push(`- ${report.created ? 'created' : 'exists'}: ${report.file}`);
@@ -1904,9 +1905,9 @@ function runSelfTest() {
   checks.push(assertSelfTest(requiredAfterInit.every((relativePath) => exists(path.join(ROOT, relativePath))), '--init leaves required files/directories present'));
   checks.push(assertSelfTest(secondInitReport.files.every((file) => !file.created) && !secondInitReport.config.created, '--init is idempotent and does not overwrite files'));
   const skillInstallDir = path.join(ROOT, 'tmp-global-skills');
-  const skillInstall = installSelfEvolutionSkill(skillInstallDir);
-  const skillInstallAgain = installSelfEvolutionSkill(skillInstallDir);
-  checks.push(assertSelfTest(skillInstall.created && exists(skillInstall.file) && !skillInstallAgain.created, '--install-skill creates missing skill and is idempotent', { first: skillInstall, second: skillInstallAgain }));
+  const skillInstall = installAgentAdapter(skillInstallDir);
+  const skillInstallAgain = installAgentAdapter(skillInstallDir);
+  checks.push(assertSelfTest(skillInstall.created && exists(skillInstall.file) && !skillInstallAgain.created, '--install-adapter creates missing agent adapter and is idempotent', { first: skillInstall, second: skillInstallAgain }));
 
   const selfCheck = selfCheckReport();
   checks.push(assertSelfTest(selfCheck.ok, '--self-check passes after --init', selfCheck.missing));
@@ -2834,9 +2835,9 @@ if (help) {
   }
 } else if (installSkill) {
   try {
-    const report = installSelfEvolutionSkill(skillDirArg);
+    const report = installAgentAdapter(skillDirArg);
     if (json) console.log(JSON.stringify(report, null, 2));
-    else console.log(renderInstallSkillMarkdown(report));
+    else console.log(renderInstallAdapterMarkdown(report));
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);

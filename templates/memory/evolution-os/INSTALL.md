@@ -86,12 +86,12 @@ evolution-review --init
 evolution-review --self-check
 ```
 
-## Install the self-evolution skill
+## Install the agent adapter
 
 Install to the default global skills directory:
 
 ```bash
-evolution-review --install-skill
+evolution-review --install-adapter
 ```
 
 Default target:
@@ -103,10 +103,12 @@ Default target:
 Install to a custom skills directory:
 
 ```bash
-evolution-review --install-skill --skill-dir ~/.openclaw/skills
+evolution-review --install-adapter --skill-dir ~/.openclaw/skills
 ```
 
-This command is idempotent. It will not overwrite an existing skill.
+This command is idempotent. It will not overwrite an existing adapter/skill file.
+
+`--install-skill` is kept as a backward-compatible alias, but docs use `--install-adapter` to make the product shape clear: the adapter is part of this project, not a separate project.
 
 ## Add the minimal host entry
 
@@ -202,7 +204,7 @@ evolution-review --candidate <candidate-id> --archive-draft --reason manual-revi
 For OpenClaw, start with Level 1 + Level 2:
 
 1. Run `evolution-review --init` in the OpenClaw workspace.
-2. Run `evolution-review --install-skill`.
+2. Run `evolution-review --install-adapter`.
 3. Add the minimal Evolution OS entry to `AGENTS.md`.
 4. Use `--before-task`, `--after-task`, and `--periodic-usage` manually or through host hooks.
 

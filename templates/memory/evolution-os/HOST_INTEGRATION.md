@@ -81,7 +81,7 @@ New lessons default to `memory/evolution-os/inbox/`. Core files should keep only
 - 训练样本讨论；
 - 准备修改核心文件。
 
-Skill 负责给模型提供操作协议；Core Entry 负责保证模型知道何时用它。
+Agent adapter 负责给模型提供操作协议；Core Entry 负责保证模型知道何时用它。
 
 ## 5. Runtime Hooks
 
@@ -230,7 +230,7 @@ Evolution OS 真正发挥作用，不看文件数量，而看这些指标：
 `0.1.0-draft` 已支持 Level 1 和 Level 2 的文件系统版入口：
 
 - Core Entry 模板；
-- self-evolution-governor skill 模板；
+- self-evolution-governor agent adapter 模板；
 - `--before-task` / `--after-task` / `--periodic-usage` runtime hook commands；
 - prepare / reflect / usage-report 底层命令；
 - review / draft / audit；

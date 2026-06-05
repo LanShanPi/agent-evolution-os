@@ -532,11 +532,11 @@ evolution-review --periodic-usage
 Host lifecycle hook for scheduled review. It summarizes prepared/applied/stale lessons from usage log.
 
 
-## Install Skill
+## Install Agent Adapter
 
 ```bash
-evolution-review --install-skill
-evolution-review --install-skill --skill-dir ~/.openclaw/skills
+evolution-review --install-adapter
+evolution-review --install-adapter --skill-dir ~/.openclaw/skills
 ```
 
-Installs `self-evolution-governor/SKILL.md` if missing. It never overwrites an existing skill file.
+Installs `self-evolution-governor/SKILL.md` if missing. It never overwrites an existing adapter/skill file. `--install-skill` remains as a backward-compatible alias for `--install-adapter`.
