@@ -22,6 +22,23 @@ Check Node:
 node --version
 ```
 
+## One-command safe install
+
+From your target agent workspace:
+
+```bash
+npm install -g github:LanShanPi/agent-evolution-os
+evolution-review --install
+```
+
+For unattended-safe mode:
+
+```bash
+evolution-review --install --unattended-safe
+```
+
+This performs safe local setup only: initialize files, create config, install the agent adapter if missing, run self-check, and print the host entry. It does not edit host instructions, restart OpenClaw, grant conversation access, publish, upload, train, delete, or modify core memory files.
+
 ## Option A: clone from GitHub
 
 ```bash

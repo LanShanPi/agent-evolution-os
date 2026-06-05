@@ -37,7 +37,9 @@ const init = args.has('--init');
 const initConfig = args.has('--init-config');
 const selfCheck = args.has('--self-check');
 const selfTest = args.has('--self-test');
+const install = args.has('--install');
 const installSkill = args.has('--install-skill') || args.has('--install-adapter');
+const unattendedSafe = args.has('--unattended-safe');
 const skillDirArgIndex = argv.indexOf('--skill-dir');
 const skillDirArg = skillDirArgIndex >= 0 ? argv[skillDirArgIndex + 1] : '';
 const suggestPromotionCandidates = args.has('--suggest-promotion-candidates');
@@ -144,6 +146,8 @@ Runtime hooks:
                                   Draft candidates for lessons repeatedly applied
   --self-check                   Check required files, config, and safety boundaries
   --self-test                    Run fixture-based smoke tests in a temp workspace
+  --install                      One-command safe local install: init + config + adapter + self-check
+  --install --unattended-safe     Also configure unattended-safe mode (low-risk auto-candidates only)
   --init                         Initialize Evolution OS files/directories if missing
   --init-config                  Create memory/evolution-os/config.json if missing
   --install-adapter              Install the agent adapter (self-evolution-governor skill) if missing
@@ -468,6 +472,108 @@ function installAgentAdapter(targetSkillsDir = '') {
     boundary: 'Install-adapter creates only the missing self-evolution-governor agent adapter; it does not edit core files.',
     nextSuggestedActions: ['Add a short Evolution OS entry to your host AGENTS.md/system prompt.', 'Run evolution-review --before-task/--after-task around durable work.'],
   };
+}
+
+
+function writeConfig(config) {
+  fs.mkdirSync(EVO_DIR, { recursive: true });
+  fs.writeFileSync(CONFIG_FILE, `${JSON.stringify(config, null, 2)}\n`);
+}
+
+function configureUnattendedSafeMode() {
+  const current = loadConfig();
+  const next = deepMerge(current, {
+    mode: 'unattended-safe',
+    runtime: {
+      autoPrepare: true,
+      autoReflect: true,
+      autoWriteLowRiskCandidates: true,
+      periodicUsage: true,
+    },
+    guardrails: {
+      requireApprovalForCoreFiles: true,
+      requireApprovalForDeletes: true,
+      requireApprovalForPublish: true,
+      requireApprovalForExternalNetwork: true,
+      requireApprovalForTrainingOrUpload: true,
+      keepAuditLog: true,
+      rollbackDrafts: true,
+    },
+    boundaries: {
+      autoModifyCoreFiles: false,
+      autoDeleteMemory: false,
+      autoPublishSkills: false,
+      autoTrainOrUpload: false,
+    },
+  });
+  writeConfig(next);
+  return { file: CONFIG_FILE, mode: next.mode, config: next };
+}
+
+function hostEntryText() {
+  return `## Evolution OS Entry\n\nUse Evolution OS for durable self-improvement. Before complex/repeated/high-learning tasks run:\n\`evolution-review --before-task --task \"<task>\"\`\n\nAfter such tasks run:\n\`evolution-review --after-task --task \"<task>\" --outcome \"<outcome>\"\`\n\nFor unattended-safe mode, low-risk candidates may be written to memory/evolution-os/inbox/, but core files, deletion, publishing, external uploads, and training require approval.\n`;
+}
+
+function installEvolutionOs(options = {}) {
+  const initReport = initEvolutionOs();
+  const adapterReport = installAgentAdapter(skillDirArg);
+  const unattended = options.unattendedSafe ? configureUnattendedSafeMode() : null;
+  const checkReport = selfCheckReport();
+  return {
+    generatedAt: new Date().toISOString(),
+    root: ROOT,
+    init: initReport,
+    adapter: adapterReport,
+    unattendedSafe: unattended,
+    selfCheck: checkReport,
+    hostEntry: hostEntryText(),
+    boundary: 'Safe install creates missing Evolution OS files, config, and adapter only. It does not edit AGENTS.md, restart OpenClaw, grant conversation access, publish, upload, train, delete, or modify core memory files.',
+    nextSuggestedActions: [
+      'Copy the hostEntry block into AGENTS.md/system prompt, or use your host plugin installer once available.',
+      'Run evolution-review --before-task/--after-task manually once to verify the loop.',
+      'For OpenClaw automatic hooks, install the plugin and explicitly enable prompt/conversation hook policy.',
+    ],
+  };
+}
+
+function renderInstallMarkdown(report) {
+  const lines = [];
+  lines.push(`# Evolution OS One-Command Install - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(`Root: ${report.root}`);
+  lines.push(`Self-check: ${report.selfCheck.ok ? 'PASS' : 'FAIL'}`);
+  lines.push('');
+  lines.push('## Results');
+  lines.push('');
+  lines.push(`- init files: ${report.init.files.filter((f) => f.created).length} created / ${report.init.files.length} checked`);
+  lines.push(`- init dirs: ${report.init.dirs.filter((d) => d.created).length} created / ${report.init.dirs.length} checked`);
+  lines.push(`- adapter: ${report.adapter.created ? 'created' : 'exists'} ${report.adapter.file}`);
+  lines.push(`- config: ${report.unattendedSafe ? `configured ${report.unattendedSafe.mode}` : 'default safe mode'}`);
+  lines.push('');
+  lines.push('## Host Entry');
+  lines.push('');
+  lines.push('Copy this into AGENTS.md, system prompt, or equivalent host instructions:');
+  lines.push('');
+  lines.push('```md');
+  lines.push(report.hostEntry.trim());
+  lines.push('```');
+  lines.push('');
+  lines.push('## Boundary');
+  lines.push('');
+  lines.push(report.boundary);
+  lines.push('');
+  lines.push('## Next Suggested Actions');
+  lines.push('');
+  for (const action of report.nextSuggestedActions) lines.push(`- ${action}`);
+  lines.push('');
+  if (!report.selfCheck.ok) {
+    lines.push('## Self-check Missing');
+    lines.push('');
+    for (const item of report.selfCheck.missing) lines.push(`- ${item.kind}: ${item.path}${item.note ? ` (${item.note})` : ''}`);
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 function renderInstallAdapterMarkdown(report) {
@@ -1908,6 +2014,8 @@ function runSelfTest() {
   const skillInstall = installAgentAdapter(skillInstallDir);
   const skillInstallAgain = installAgentAdapter(skillInstallDir);
   checks.push(assertSelfTest(skillInstall.created && exists(skillInstall.file) && !skillInstallAgain.created, '--install-adapter creates missing agent adapter and is idempotent', { first: skillInstall, second: skillInstallAgain }));
+  const installReport = installEvolutionOs({ unattendedSafe: true });
+  checks.push(assertSelfTest(installReport.selfCheck.ok && installReport.unattendedSafe?.mode === 'unattended-safe', '--install --unattended-safe completes safe local setup', { selfCheck: installReport.selfCheck.ok, mode: installReport.unattendedSafe?.mode }));
 
   const selfCheck = selfCheckReport();
   checks.push(assertSelfTest(selfCheck.ok, '--self-check passes after --init', selfCheck.missing));
@@ -2804,6 +2912,16 @@ if (help) {
       }
     } else if (json) console.log(JSON.stringify(report, null, 2));
     else console.log(renderUsageReportMarkdown(report));
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+} else if (install) {
+  try {
+    const report = installEvolutionOs({ unattendedSafe });
+    if (json) console.log(JSON.stringify(report, null, 2));
+    else console.log(renderInstallMarkdown(report));
+    if (!report.selfCheck.ok) process.exitCode = 1;
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);

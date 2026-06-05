@@ -8,12 +8,16 @@ From a target agent workspace:
 
 ```bash
 npm install github:LanShanPi/agent-evolution-os
-npx evolution-review --init
-npx evolution-review --install-adapter
-npx evolution-review --self-check
+npx evolution-review --install
 ```
 
-Then add the short Evolution OS entry from `docs/INSTALL.md` to your `AGENTS.md`, system prompt, or equivalent host instruction file.
+For unattended-safe mode:
+
+```bash
+npx evolution-review --install --unattended-safe
+```
+
+Then add the printed Evolution OS entry, or the short entry from `docs/INSTALL.md`, to your `AGENTS.md`, system prompt, or equivalent host instruction file.
 
 Daily runtime hooks:
 
@@ -23,7 +27,7 @@ npx evolution-review --after-task --task "<task>" --outcome "<outcome>"
 npx evolution-review --periodic-usage
 ```
 
-See `docs/INSTALL.md`, `docs/HOST_INTEGRATION.md`, and `docs/OPENCLAW_INTEGRATION.md`.
+See `docs/INSTALL.md`, `docs/UNATTENDED_EVOLUTION.md`, `docs/HOST_INTEGRATION.md`, and `docs/OPENCLAW_INTEGRATION.md`.
 
 ## Product Shape
 
@@ -52,6 +56,7 @@ The agent adapter exists because current agent runtimes need a semantic trigger 
 - `HOST_INTEGRATION.md`：宿主集成指南，定义核心入口、skill、runtime hooks、plugin guardrails 如何让 Evolution OS 真正进入 Agent 行为链路。
 - `OPENCLAW_INTEGRATION.md`：OpenClaw 集成蓝图，基于 OpenClaw internal hooks、typed plugin hooks、Plugin SDK host hooks 设计自动调用方案。
 - `INSTALL.md`：安装/复制到新 workspace 的说明。
+- `UNATTENDED_EVOLUTION.md`：无人值守自进化的分级权限模型。
 - `QUICKSTART.md`：日常最短使用流程。
 - `COMMANDS.md`：命令参考手册。
 - `REPO_PLAN.md`：未来 GitHub repo / package 结构草案。
