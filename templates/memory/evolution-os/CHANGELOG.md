@@ -6,6 +6,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Added
 
+- Readiness and demonstration commands: `--readiness-report` and `--demo-run`; self-test now covers the disposable end-to-end loop.
 - One-command safe install via `evolution-review --install` and unattended-safe mode via `--install --unattended-safe`.
 - Documented tiered unattended evolution model in `docs/UNATTENDED_EVOLUTION.md`.
 - Optional OpenClaw typed lifecycle hooks in the plugin scaffold: `agent_turn_prepare` for bounded same-turn prepare context and `agent_end` for post-turn reflection, both disabled by default.

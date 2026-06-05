@@ -505,6 +505,15 @@ node tools/evolution-review.js --skill-audit --write-report
 - 自动上传任何数据。
 
 
+## Readiness and demo
+
+```bash
+evolution-review --readiness-report
+evolution-review --demo-run
+```
+
+`--readiness-report` classifies the current workspace as `not-ready`, `install-ready`, `core-runtime-ready`, or `early-adopter-ready`. `--demo-run` creates a disposable temp workspace and runs install → before-task → after-task candidate capture → periodic usage → readiness report.
+
 ## Runtime Hook Commands
 
 ### before-task

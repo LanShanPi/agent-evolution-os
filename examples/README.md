@@ -61,3 +61,14 @@ node tools/evolution-review.js --skill-audit
 ## 边界
 
 examples 是演示数据，不是推荐写入真实 memory 的内容。
+
+
+## Built-in demo
+
+Run a disposable end-to-end demo without touching your current workspace:
+
+```bash
+evolution-review --demo-run
+```
+
+The demo performs safe install, before-task, after-task with low-risk candidate capture, periodic usage, and readiness report inside a temporary directory.

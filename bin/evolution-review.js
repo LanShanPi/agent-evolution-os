@@ -40,6 +40,8 @@ const selfTest = args.has('--self-test');
 const install = args.has('--install');
 const installSkill = args.has('--install-skill') || args.has('--install-adapter');
 const unattendedSafe = args.has('--unattended-safe');
+const readinessReport = args.has('--readiness-report');
+const demoRun = args.has('--demo-run');
 const skillDirArgIndex = argv.indexOf('--skill-dir');
 const skillDirArg = skillDirArgIndex >= 0 ? argv[skillDirArgIndex + 1] : '';
 const suggestPromotionCandidates = args.has('--suggest-promotion-candidates');
@@ -145,6 +147,8 @@ Runtime hooks:
   --usage-report --suggest-promotion-candidates
                                   Draft candidates for lessons repeatedly applied
   --self-check                   Check required files, config, and safety boundaries
+  --readiness-report             Explain whether this workspace is ready for external/agent use
+  --demo-run                     Run a disposable end-to-end Evolution OS demo in a temp workspace
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --install                      One-command safe local install: init + config + adapter + self-check
   --install --unattended-safe     Also configure unattended-safe mode (low-risk auto-candidates only)
@@ -1875,13 +1879,153 @@ function renderSkillCleanupCandidatesMarkdown(report) {
   return lines.join('\n');
 }
 
+
+function readinessReportData() {
+  const check = selfCheckReport();
+  const hasUsage = exists(USAGE_LOG_FILE) && bytes(USAGE_LOG_FILE) > 0;
+  const counts = {
+    inbox: listMarkdown(INBOX_DIR).length,
+    promoted: listMarkdown(PROMOTED_DIR).length,
+    archive: listMarkdown(ARCHIVE_DIR).length,
+    reports: listMarkdown(REPORTS_DIR).length,
+  };
+  const pluginDir = path.join(ROOT, 'plugins/openclaw-evolution-os');
+  const plugin = {
+    present: exists(path.join(pluginDir, 'openclaw.plugin.json')) && exists(path.join(pluginDir, 'src/index.js')),
+    path: 'plugins/openclaw-evolution-os',
+  };
+  const installReady = check.ok;
+  const runtimeReady = hasUsage || counts.inbox > 0 || counts.promoted > 0;
+  const openClawReady = plugin.present;
+  const missing = [];
+  if (!check.ok) missing.push(...check.missing.map((item) => `${item.kind}: ${item.path}`));
+  if (!hasUsage) missing.push('runtime usage log is empty; run --before-task/--after-task or --demo-run');
+  if (!plugin.present) missing.push('OpenClaw plugin scaffold not found; core CLI still works without OpenClaw plugin');
+  const level = installReady && runtimeReady && openClawReady ? 'early-adopter-ready' : installReady && runtimeReady ? 'core-runtime-ready' : installReady ? 'install-ready' : 'not-ready';
+  return {
+    generatedAt: new Date().toISOString(),
+    root: ROOT,
+    level,
+    installReady,
+    runtimeReady,
+    openClawReady,
+    selfCheck: check,
+    counts,
+    hasUsage,
+    plugin,
+    missing,
+    nextSuggestedActions: level === 'early-adopter-ready'
+      ? ['Run npm pack --dry-run before publishing.', 'Run OpenClaw plugin runtime inspect in a real host.', 'Collect one external install feedback run.']
+      : level === 'core-runtime-ready'
+        ? ['Optional: install OpenClaw plugin for automatic runtime hooks.', 'Run npm pack --dry-run before publishing.', 'Collect one external install feedback run.']
+        : ['Run evolution-review --install --unattended-safe.', 'Run evolution-review --demo-run.', 'Then rerun evolution-review --readiness-report.'],
+  };
+}
+
+function renderReadinessMarkdown(report) {
+  const lines = [];
+  lines.push(`# Evolution OS Readiness Report - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(`Root: ${report.root}`);
+  lines.push(`Level: ${report.level}`);
+  lines.push('');
+  lines.push('## Gates');
+  lines.push('');
+  lines.push(`- install ready: ${report.installReady ? 'yes' : 'no'}`);
+  lines.push(`- runtime evidence: ${report.runtimeReady ? 'yes' : 'no'}`);
+  lines.push(`- OpenClaw plugin scaffold: ${report.openClawReady ? 'yes' : 'no'}`);
+  lines.push('');
+  lines.push('## Counts');
+  lines.push('');
+  for (const [key, value] of Object.entries(report.counts)) lines.push(`- ${key}: ${value}`);
+  lines.push(`- usage log: ${report.hasUsage ? 'present' : 'empty/missing'}`);
+  lines.push('');
+  lines.push('## Missing / Weak Signals');
+  lines.push('');
+  if (!report.missing.length) lines.push('- None');
+  else for (const item of report.missing) lines.push(`- ${item}`);
+  lines.push('');
+  lines.push('## Next Suggested Actions');
+  lines.push('');
+  for (const action of report.nextSuggestedActions) lines.push(`- ${action}`);
+  lines.push('');
+  return lines.join('\n');
+}
+
+function withTemporaryRoot(fn) {
+  const originalRoot = process.cwd();
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'evolution-os-demo-'));
+  const script = path.resolve(__filename);
+  return fn({ tmp, script, originalRoot });
+}
+
+function demoRunData() {
+  return withTemporaryRoot(({ tmp, script }) => {
+    const run = (args) => {
+      const cp = require('node:child_process');
+      const result = cp.spawnSync(process.execPath, [script, ...args], { cwd: tmp, encoding: 'utf8' });
+      return { args, status: result.status, stdout: result.stdout, stderr: result.stderr };
+    };
+    const steps = [];
+    steps.push(run(['--install', '--unattended-safe', '--json']));
+    steps.push(run(['--before-task', '--task', 'demo: fix repeated API auth scope mistake', '--json']));
+    steps.push(run(['--after-task', '--task', 'demo: fix repeated API auth scope mistake', '--outcome', 'noticed auth scope mismatch; next time check configured scope before retrying', '--write-candidate', '--json']));
+    steps.push(run(['--periodic-usage', '--json']));
+    steps.push(run(['--readiness-report', '--json']));
+    const failed = steps.filter((step) => step.status !== 0);
+    const readiness = (() => { try { return JSON.parse(steps[4].stdout); } catch { return null; } })();
+    const candidateFiles = listMarkdown(path.join(tmp, 'memory/evolution-os/inbox')).map((file) => path.relative(tmp, file));
+    return {
+      generatedAt: new Date().toISOString(),
+      tmp,
+      ok: failed.length === 0,
+      steps: steps.map((step) => ({ args: step.args, status: step.status })),
+      candidateFiles,
+      readinessLevel: readiness?.level || null,
+      boundary: 'Demo uses a disposable temp workspace and does not modify the caller workspace.',
+      inspectCommand: `cd ${tmp} && node ${script} --readiness-report`,
+    };
+  });
+}
+
+function renderDemoRunMarkdown(report) {
+  const lines = [];
+  lines.push(`# Evolution OS Demo Run - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(`Overall: ${report.ok ? 'PASS' : 'FAIL'}`);
+  lines.push(`Temp workspace: ${report.tmp}`);
+  lines.push(`Readiness level: ${report.readinessLevel || '(unknown)'}`);
+  lines.push('');
+  lines.push('## Steps');
+  lines.push('');
+  for (const step of report.steps) lines.push(`- ${step.status === 0 ? '[x]' : '[ ]'} node evolution-review.js ${step.args.join(' ')}`);
+  lines.push('');
+  lines.push('## Candidate Files');
+  lines.push('');
+  if (!report.candidateFiles.length) lines.push('- None');
+  else for (const file of report.candidateFiles) lines.push(`- ${file}`);
+  lines.push('');
+  lines.push('## Boundary');
+  lines.push('');
+  lines.push(report.boundary);
+  lines.push('');
+  lines.push('Inspect demo workspace:');
+  lines.push('');
+  lines.push('```bash');
+  lines.push(report.inspectCommand);
+  lines.push('```');
+  lines.push('');
+  return lines.join('\n');
+}
+
 function selfCheckReport() {
   const requiredFiles = [
     'memory/evolution-os/README.md',
     'memory/evolution-os/DESIGN.md',
     'memory/evolution-os/policy.md',
     'memory/evolution-os/schemas/candidate-template.md',
-    'skills/self-evolution-governor/SKILL.md',
   ];
   const requiredDirs = [
     'memory/evolution-os/inbox',
@@ -1892,11 +2036,19 @@ function selfCheckReport() {
   ];
   const checks = [];
   for (const file of requiredFiles) checks.push({ kind: 'file', path: file, ok: exists(path.join(ROOT, file)) });
+  const workspaceAdapter = path.join(ROOT, 'skills/self-evolution-governor/SKILL.md');
+  const globalAdapter = path.join(os.homedir(), '.agents/skills/self-evolution-governor/SKILL.md');
+  checks.push({
+    kind: 'adapter',
+    path: 'skills/self-evolution-governor/SKILL.md or ~/.agents/skills/self-evolution-governor/SKILL.md',
+    ok: exists(workspaceAdapter) || exists(globalAdapter),
+    note: exists(workspaceAdapter) ? 'workspace adapter present' : exists(globalAdapter) ? 'global adapter present' : 'missing; run --install-adapter',
+  });
   checks.push({
     kind: 'file',
     path: 'tools/evolution-review.js or bin/evolution-review.js',
-    ok: exists(path.join(ROOT, 'tools/evolution-review.js')) || exists(path.join(ROOT, 'bin/evolution-review.js')),
-    note: 'review CLI present',
+    ok: exists(path.join(ROOT, 'tools/evolution-review.js')) || exists(path.join(ROOT, 'bin/evolution-review.js')) || exists(__filename),
+    note: exists(path.join(ROOT, 'tools/evolution-review.js')) || exists(path.join(ROOT, 'bin/evolution-review.js')) ? 'workspace CLI present' : 'installed CLI present',
   });
   for (const dir of requiredDirs) checks.push({ kind: 'dir', path: dir, ok: exists(path.join(ROOT, dir)) && fs.statSync(path.join(ROOT, dir)).isDirectory() });
   checks.push({ kind: 'config', path: 'memory/evolution-os/config.json', ok: exists(CONFIG_FILE), note: exists(CONFIG_FILE) ? 'present' : 'missing; run --init-config' });
@@ -2016,6 +2168,10 @@ function runSelfTest() {
   checks.push(assertSelfTest(skillInstall.created && exists(skillInstall.file) && !skillInstallAgain.created, '--install-adapter creates missing agent adapter and is idempotent', { first: skillInstall, second: skillInstallAgain }));
   const installReport = installEvolutionOs({ unattendedSafe: true });
   checks.push(assertSelfTest(installReport.selfCheck.ok && installReport.unattendedSafe?.mode === 'unattended-safe', '--install --unattended-safe completes safe local setup', { selfCheck: installReport.selfCheck.ok, mode: installReport.unattendedSafe?.mode }));
+  const ready = readinessReportData();
+  checks.push(assertSelfTest(['install-ready', 'core-runtime-ready', 'early-adopter-ready'].includes(ready.level), '--readiness-report classifies installed workspace', { level: ready.level }));
+  const demo = demoRunData();
+  checks.push(assertSelfTest(demo.ok && demo.candidateFiles.length > 0, '--demo-run completes disposable end-to-end loop', { ok: demo.ok, candidateFiles: demo.candidateFiles }));
 
   const selfCheck = selfCheckReport();
   checks.push(assertSelfTest(selfCheck.ok, '--self-check passes after --init', selfCheck.missing));
@@ -2922,6 +3078,25 @@ if (help) {
     if (json) console.log(JSON.stringify(report, null, 2));
     else console.log(renderInstallMarkdown(report));
     if (!report.selfCheck.ok) process.exitCode = 1;
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+} else if (readinessReport) {
+  try {
+    const report = readinessReportData();
+    if (json) console.log(JSON.stringify(report, null, 2));
+    else console.log(renderReadinessMarkdown(report));
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+} else if (demoRun) {
+  try {
+    const report = demoRunData();
+    if (json) console.log(JSON.stringify(report, null, 2));
+    else console.log(renderDemoRunMarkdown(report));
+    if (!report.ok) process.exitCode = 1;
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);

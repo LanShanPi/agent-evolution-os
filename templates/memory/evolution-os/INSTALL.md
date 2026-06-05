@@ -249,6 +249,8 @@ Evolution OS does not automatically:
 
 ```bash
 evolution-review --self-check
+evolution-review --readiness-report
+evolution-review --demo-run
 npm run verify
 ```
 

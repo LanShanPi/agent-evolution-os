@@ -19,6 +19,13 @@ npx evolution-review --install --unattended-safe
 
 Then add the printed Evolution OS entry, or the short entry from `docs/INSTALL.md`, to your `AGENTS.md`, system prompt, or equivalent host instruction file.
 
+Readiness/demo checks:
+
+```bash
+npx evolution-review --readiness-report
+npx evolution-review --demo-run
+```
+
 Daily runtime hooks:
 
 ```bash
