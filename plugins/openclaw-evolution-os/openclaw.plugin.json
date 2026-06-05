@@ -1,0 +1,42 @@
+{
+  "id": "openclaw-evolution-os",
+  "name": "OpenClaw Evolution OS",
+  "description": "Host integration adapter for agent-evolution-os runtime hooks.",
+  "activation": {
+    "onStartup": true
+  },
+  "commandAliases": [
+    {
+      "name": "evolution",
+      "kind": "runtime-slash"
+    }
+  ],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "evolutionReviewBin": {
+        "type": "string",
+        "description": "Command used to run evolution-review. Defaults to evolution-review on PATH."
+      },
+      "autoBeforeTask": {
+        "type": "boolean",
+        "default": false,
+        "description": "Future typed-hook integration: run before-task automatically. Default false in scaffold."
+      },
+      "autoAfterTask": {
+        "type": "boolean",
+        "default": false,
+        "description": "Future typed-hook integration: run after-task automatically. Default false in scaffold."
+      },
+      "writeCandidate": {
+        "type": "boolean",
+        "default": false,
+        "description": "Allow after-task to write safe candidates. High-risk writes remain blocked."
+      },
+      "maxInjectedLessons": { "type": "integer", "minimum": 1, "maximum": 10, "default": 5 },
+      "maxInjectedChars": { "type": "integer", "minimum": 200, "maximum": 8000, "default": 2000 }
+    }
+  }
+}

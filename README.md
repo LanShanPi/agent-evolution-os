@@ -33,7 +33,7 @@ See `docs/INSTALL.md`, `docs/HOST_INTEGRATION.md`, and `docs/OPENCLAW_INTEGRATIO
 2. **Workspace templates**: `memory/evolution-os/` policy, docs, schemas, and runtime directories.
 3. **Agent adapter**: `self-evolution-governor`, installed into a skills directory so an agent knows when to call Evolution OS. This is not a separate project.
 4. **Host integration docs**: how to connect Evolution OS to OpenClaw or another agent runtime.
-5. **Future plugin**: `openclaw-evolution-os` for automatic lifecycle integration and guardrails.
+5. **OpenClaw plugin scaffold**: `plugins/openclaw-evolution-os/` for command-based host integration now, future automatic lifecycle hooks and guardrails.
 
 The agent adapter exists because current agent runtimes need a semantic trigger layer. The project remains a single package.
 
@@ -66,3 +66,31 @@ The agent adapter exists because current agent runtimes need a semantic trigger 
 当前：文件系统版已跑通核心闭环；已补齐 config、CLI help、self-check/self-test、install/quickstart/commands 文档和 examples；已新增 Runtime Evolution Loop、Evolution Boundaries 与 Host Integration 文档，解释治理模式、运行时模式、进化对象、自动化权限、文件系统/plugin/参数训练边界，以及如何通过核心入口、skill、runtime hooks 和 plugin guardrails 真正接入宿主 Agent 行为链路。当前已提供 Level 2 runtime hook commands，并补充 OpenClaw 集成蓝图；下一步做 OpenClaw plugin scaffold 与 runtime 自动调用。
 
 详见：`DESIGN.md`、`RUNTIME_LOOP.md`、`PRODUCT.md`、`INSTALL.md`、`QUICKSTART.md`、`COMMANDS.md`。
+
+
+## OpenClaw Plugin Scaffold
+
+This repo includes an early OpenClaw plugin scaffold under:
+
+```text
+plugins/openclaw-evolution-os/
+```
+
+It currently provides a native plugin manifest and command bridge:
+
+```text
+/evolution before <task>
+/evolution after <task> -- <outcome>
+/evolution usage
+```
+
+Local development install:
+
+```bash
+openclaw plugins install --link ./plugins/openclaw-evolution-os
+openclaw plugins enable openclaw-evolution-os
+openclaw gateway restart
+openclaw plugins inspect openclaw-evolution-os --runtime --json
+```
+
+Automatic typed lifecycle hooks are intentionally left for the next implementation step.

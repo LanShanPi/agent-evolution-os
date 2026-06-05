@@ -1,0 +1,24 @@
+{
+  "name": "@lanshan/agent-evolution-os-openclaw-plugin",
+  "version": "0.1.0-draft",
+  "description": "OpenClaw host integration adapter for agent-evolution-os.",
+  "type": "module",
+  "private": true,
+  "main": "src/index.js",
+  "openclaw": {
+    "extensions": ["./src/index.js"],
+    "compat": {
+      "pluginApi": ">=2026.5.27",
+      "minGatewayVersion": "2026.5.27"
+    },
+    "build": {
+      "openclawVersion": "2026.5.27"
+    }
+  },
+  "scripts": {
+    "check": "node --check src/index.js src/evolution-cli.js"
+  },
+  "engines": {
+    "node": ">=22.19"
+  }
+}

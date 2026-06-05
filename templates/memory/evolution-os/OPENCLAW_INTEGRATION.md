@@ -344,7 +344,9 @@ api.lifecycle.registerRuntimeLifecycle(...)
 
 ### Step 1：插件 scaffold
 
-新增 package：
+当前 repo 已新增初始 scaffold：`plugins/openclaw-evolution-os/`。
+
+Package structure：
 
 ```text
 plugins/openclaw-evolution-os/

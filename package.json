@@ -10,12 +10,14 @@
   "scripts": {
     "check": "node --check bin/evolution-review.js",
     "self-test": "tmp=$(mktemp -d) && mkdir -p $tmp/bin && cp bin/evolution-review.js $tmp/bin/evolution-review.js && cd $tmp && node bin/evolution-review.js --self-test",
-    "verify": "npm run check && npm run self-test"
+    "verify": "npm run check && npm run self-test && npm run check:plugin",
+    "check:plugin": "npm run --prefix plugins/openclaw-evolution-os check"
   },
   "files": [
     "bin/",
     "docs/",
     "templates/",
+    "plugins/",
     "examples/",
     "README.md",
     "CHANGELOG.md",

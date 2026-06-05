@@ -240,3 +240,31 @@ Expected:
 ```text
 Overall: PASS
 ```
+
+
+## OpenClaw plugin scaffold
+
+The repo includes a draft OpenClaw plugin under:
+
+```text
+plugins/openclaw-evolution-os/
+```
+
+For local development:
+
+```bash
+openclaw plugins install --link ./plugins/openclaw-evolution-os
+openclaw plugins enable openclaw-evolution-os
+openclaw gateway restart
+openclaw plugins inspect openclaw-evolution-os --runtime --json
+```
+
+The scaffold exposes command-based integration first:
+
+```text
+/evolution before <task>
+/evolution after <task> -- <outcome>
+/evolution usage
+```
+
+It does not enable automatic typed lifecycle hooks yet.

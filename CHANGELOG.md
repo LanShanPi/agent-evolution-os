@@ -6,6 +6,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Added
 
+- Initial `plugins/openclaw-evolution-os/` scaffold with native OpenClaw manifest, command bridge, safe defaults, and plugin syntax check wired into verify.
 - Renamed installation docs around the semantic trigger layer from “skill” to “agent adapter”; added `--install-adapter` as the primary command while keeping `--install-skill` as an alias.
 - `--install-skill` command and expanded GitHub installation docs for clone/npm/global usage.
 - `OPENCLAW_INTEGRATION.md` blueprint based on OpenClaw internal hooks, typed plugin hooks, and Plugin SDK host hooks; recommends an `openclaw-evolution-os` plugin instead of editing OpenClaw core.
