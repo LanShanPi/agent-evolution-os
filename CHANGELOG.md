@@ -6,6 +6,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Added
 
+- `--before-task`, `--after-task`, and `--periodic-usage` host hook commands for Level 2 runtime integration; self-test now verifies beforeTask/afterTask usage events.
 - `HOST_INTEGRATION.md` to define the minimum core entry, skill integration, runtime hooks, and plugin guardrails required for Evolution OS to actually affect host agent behavior.
 - `EVOLUTION_BOUNDARIES.md` to define L0-L6 evolution targets, automation/approval boundaries, and the separation between file-system governance, future plugin guardrails, and parameter training.
 - `RUNTIME_LOOP.md` to define Governance Mode vs Runtime Mode, prepare/reflect/usage-report responsibilities, runtime lesson state transitions, lesson reuse metrics, and the boundary between usage logs and training corpus.

@@ -91,10 +91,16 @@ Skill 负责给模型提供操作协议；Core Entry 负责保证模型知道何
 
 触发：复杂任务开始前。
 
-动作：
+推荐命令：
 
 ```bash
-evolution-review --prepare --task "$TASK"
+evolution-review --before-task --task "$TASK"
+```
+
+等价底层动作：
+
+```bash
+evolution-review --prepare --task "$TASK" --record-usage
 ```
 
 输出：
@@ -108,10 +114,22 @@ evolution-review --prepare --task "$TASK"
 
 触发：复杂任务完成后、失败后、用户纠正后。
 
-动作：
+推荐命令：
 
 ```bash
-evolution-review --reflect --task "$TASK" --outcome "$OUTCOME"
+evolution-review --after-task --task "$TASK" --outcome "$OUTCOME"
+```
+
+如果希望安全候选自动写入 inbox：
+
+```bash
+evolution-review --after-task --task "$TASK" --outcome "$OUTCOME" --write-candidate
+```
+
+等价底层动作：
+
+```bash
+evolution-review --reflect --task "$TASK" --outcome "$OUTCOME" --record-usage
 ```
 
 输出：
@@ -124,7 +142,13 @@ evolution-review --reflect --task "$TASK" --outcome "$OUTCOME"
 
 触发：每日、每周或每 N 个任务。
 
-动作：
+推荐命令：
+
+```bash
+evolution-review --periodic-usage
+```
+
+等价底层动作：
 
 ```bash
 evolution-review --usage-report
@@ -203,17 +227,18 @@ Evolution OS 真正发挥作用，不看文件数量，而看这些指标：
 
 ## 9. 当前边界
 
-`0.1.0-draft` 已支持 Level 1：
+`0.1.0-draft` 已支持 Level 1 和 Level 2 的文件系统版入口：
 
 - Core Entry 模板；
 - self-evolution-governor skill 模板；
-- prepare / reflect / usage-report；
+- `--before-task` / `--after-task` / `--periodic-usage` runtime hook commands；
+- prepare / reflect / usage-report 底层命令；
 - review / draft / audit；
 - Evolution Boundaries。
 
-下一步产品化应优先做 Level 2：
+下一步产品化应优先做更深宿主融合：
 
-- 标准化 beforeTask / afterTask hook；
 - 为 OpenClaw 提供可选集成片段；
-- 让 prepare/reflect 的调用更短、更不依赖手写命令；
-- 给 usage-report 增加更直接的行动建议。
+- 让宿主 runtime 在任务生命周期自动调用 hook commands；
+- 给 usage-report 增加更直接的行动建议；
+- 流程稳定后实现 Level 3 plugin guardrails。

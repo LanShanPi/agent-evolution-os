@@ -25,6 +25,9 @@ const json = args.has('--json');
 const help = args.has('--help') || args.has('-h');
 const prepare = args.has('--prepare');
 const reflect = args.has('--reflect');
+const beforeTask = args.has('--before-task');
+const afterTask = args.has('--after-task');
+const periodicUsage = args.has('--periodic-usage');
 const outcomeArgIndex = argv.indexOf('--outcome');
 const outcomeText = outcomeArgIndex >= 0 ? argv[outcomeArgIndex + 1] : '';
 const taskArgIndex = argv.indexOf('--task');
@@ -122,6 +125,14 @@ Review:
                                   Evaluate post-task outcome and suggest capture/promotion
   --reflect --write-candidate     With --reflect: write safe candidate to inbox
   --record-usage                  With --prepare/--reflect: append runtime usage-log.jsonl
+
+Runtime hooks:
+  --before-task --task <text>     Host hook: prepare + record usage before a task
+  --after-task --task <text> --outcome <text>
+                                  Host hook: reflect + record usage after a task
+  --after-task --write-candidate  With --after-task: write safe candidate to inbox
+  --periodic-usage                Host hook: usage report for scheduled review
+
   --usage-report                  Summarize runtime lesson reuse from usage-log.jsonl
   --usage-report --suggest-cleanup-candidates
                                   Draft candidates for lessons prepared but not applied
@@ -1916,6 +1927,12 @@ function runSelfTest() {
   appendUsageLog({ type: 'reflect', task: reflectForUsage.task, outcome: reflectForUsage.outcome, appliedLessons: reflectForUsage.appliedLessons, candidateCreated: Boolean(reflectForUsage.suggestedCandidate) });
   const usage = usageReportData();
   checks.push(assertSelfTest(usage.counts.prepare === 1 && usage.counts.reflect === 1, 'usage ledger records prepare and reflect events', usage.counts));
+  const beforeHook = prepareReport('runtime hook fixture task');
+  appendUsageLog({ type: 'prepare', hook: 'beforeTask', task: beforeHook.task, relevantLessons: beforeHook.relevantLessons, applyChecklist: beforeHook.applyChecklist, gaps: beforeHook.gaps });
+  const afterHook = reflectReport('runtime hook fixture task', 'Task passed after applying runtime hook fixture task lessons.');
+  appendUsageLog({ type: 'reflect', hook: 'afterTask', task: afterHook.task, outcome: afterHook.outcome, appliedLessons: afterHook.appliedLessons, candidateCreated: false });
+  const hookUsage = usageReportData();
+  checks.push(assertSelfTest(hookUsage.events.some((event) => event.hook === 'beforeTask') && hookUsage.events.some((event) => event.hook === 'afterTask'), 'runtime hooks record beforeTask and afterTask usage events', hookUsage.counts));
   checks.push(assertSelfTest(usage.counts.lessons > 0, 'usage report summarizes lesson stats', usage.counts));
 
   appendUsageLog({ type: 'reflect', task: reflectForUsage.task, outcome: reflectForUsage.outcome, appliedLessons: reflectForUsage.appliedLessons, candidateCreated: false });
@@ -2239,6 +2256,7 @@ function usageReportData() {
       effectiveLessons: effective.length,
       stalePreparedOnly: stalePreparedOnly.length,
     },
+    events,
     lessonStats,
     effective,
     stalePreparedOnly,
@@ -2661,6 +2679,50 @@ function renderMarkdown(report) {
 
 if (help) {
   console.log(renderHelp());
+} else if (beforeTask) {
+  try {
+    const report = prepareReport(taskText);
+    appendUsageLog({ type: 'prepare', hook: 'beforeTask', task: report.task, relevantLessons: report.relevantLessons, applyChecklist: report.applyChecklist, gaps: report.gaps });
+    const payload = { hook: 'beforeTask', recordedUsage: true, report };
+    if (json) console.log(JSON.stringify(payload, null, 2));
+    else {
+      console.log(`# Evolution OS Before Task Hook - ${today}\n`);
+      console.log(renderPrepareMarkdown(report));
+      console.log('\n## Hook Result\n\n- recordedUsage: yes\n- next: Apply checklist during task, then run --after-task with outcome.');
+    }
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+} else if (afterTask) {
+  try {
+    const report = reflectReport(taskText, outcomeText);
+    const candidateWrite = writeCandidate ? writeReflectCandidate(report) : null;
+    appendUsageLog({ type: 'reflect', hook: 'afterTask', task: report.task, outcome: report.outcome, appliedLessons: report.appliedLessons, evaluation: report.evaluation, candidateCreated: Boolean(candidateWrite?.written), candidateFile: candidateWrite?.file || null });
+    const payload = { hook: 'afterTask', recordedUsage: true, report, candidateWrite };
+    if (json) console.log(JSON.stringify(payload, null, 2));
+    else {
+      console.log(`# Evolution OS After Task Hook - ${today}\n`);
+      console.log(renderReflectMarkdown(report));
+      console.log('\n## Hook Result\n\n- recordedUsage: yes');
+      if (candidateWrite) console.error(`${candidateWrite.written ? 'Wrote' : 'Skipped'} ${candidateWrite.file || ''}${candidateWrite.reason ? ` (${candidateWrite.reason})` : ''}`);
+    }
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+} else if (periodicUsage) {
+  try {
+    const report = usageReportData();
+    if (json) console.log(JSON.stringify({ hook: 'periodicUsage', report }, null, 2));
+    else {
+      console.log(`# Evolution OS Periodic Usage Hook - ${today}\n`);
+      console.log(renderUsageReportMarkdown(report));
+    }
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
 } else if (usageReport) {
   try {
     const report = usageReportData();

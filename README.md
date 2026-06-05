@@ -27,6 +27,6 @@ Agent self-evolution governance system.
 
 目标不是停在 MVP，而是做成实际可用、可复制给别人用、后续可插件化发布的 Evolution OS。
 
-当前：文件系统版已跑通核心闭环；已补齐 config、CLI help、self-check/self-test、install/quickstart/commands 文档和 examples；已新增 Runtime Evolution Loop、Evolution Boundaries 与 Host Integration 文档，解释治理模式、运行时模式、进化对象、自动化权限、文件系统/plugin/参数训练边界，以及如何通过核心入口、skill、runtime hooks 和 plugin guardrails 真正接入宿主 Agent 行为链路。下一步做 Level 2 runtime hooks / OpenClaw plugin 集成。
+当前：文件系统版已跑通核心闭环；已补齐 config、CLI help、self-check/self-test、install/quickstart/commands 文档和 examples；已新增 Runtime Evolution Loop、Evolution Boundaries 与 Host Integration 文档，解释治理模式、运行时模式、进化对象、自动化权限、文件系统/plugin/参数训练边界，以及如何通过核心入口、skill、runtime hooks 和 plugin guardrails 真正接入宿主 Agent 行为链路。当前已提供 Level 2 runtime hook commands；下一步做 OpenClaw runtime 自动调用与 Level 3 plugin guardrails。
 
 详见：`DESIGN.md`、`RUNTIME_LOOP.md`、`PRODUCT.md`、`INSTALL.md`、`QUICKSTART.md`、`COMMANDS.md`。
