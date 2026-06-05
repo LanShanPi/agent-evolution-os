@@ -268,3 +268,39 @@ The scaffold exposes command-based integration first:
 ```
 
 It does not enable automatic typed lifecycle hooks yet.
+
+
+## Optional automatic OpenClaw hooks
+
+The plugin includes typed hooks based on real OpenClaw hook names:
+
+- `before_prompt_build` for bounded prepare context injection;
+- `agent_end` for post-turn reflection.
+
+They are disabled by default. To enable after reviewing the boundary, configure:
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "openclaw-evolution-os": {
+        "enabled": true,
+        "config": {
+          "autoBeforeTask": true,
+          "autoAfterTask": true,
+          "writeCandidate": false
+        },
+        "hooks": {
+          "allowConversationAccess": true,
+          "timeouts": {
+            "before_prompt_build": 30000,
+            "agent_end": 30000
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+`allowConversationAccess=true` is required by OpenClaw for non-bundled conversation hooks such as `agent_end`. Keep `writeCandidate=false` until you trust the workflow.

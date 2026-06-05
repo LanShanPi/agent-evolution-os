@@ -344,7 +344,7 @@ api.lifecycle.registerRuntimeLifecycle(...)
 
 ### Step 1：插件 scaffold
 
-当前 repo 已新增初始 scaffold：`plugins/openclaw-evolution-os/`。
+当前 repo 已新增 `plugins/openclaw-evolution-os/`，包含命令桥接和可选 typed hooks。
 
 Package structure：
 
@@ -479,8 +479,23 @@ openclaw evolution status
 
 ```text
 现在：Level 1 + Level 2 CLI hook commands 已完成
-下一步：OpenClaw plugin scaffold，使用 typed hooks 自动调用 CLI hook commands
+当前：OpenClaw plugin scaffold 已实现，使用 `before_prompt_build` / `agent_end` 可选自动调用 CLI hook commands（默认关闭）
 之后：稳定后再考虑 Level 3 plugin guardrails / upstream core hook
 ```
 
 这样既能真正影响行为，又能让别人安装使用，也符合 OpenClaw 现有扩展模型。
+
+
+## Implemented typed hooks in scaffold
+
+The scaffold now uses hook names confirmed from OpenClaw docs and type definitions:
+
+- `before_prompt_build`: returns `prependContext` with a bounded Evolution OS prepare checklist.
+- `agent_end`: observes final run outcome and calls Evolution OS reflect.
+
+Important config boundary:
+
+- `autoBeforeTask=false` and `autoAfterTask=false` by default.
+- `agent_end` is a non-bundled conversation hook; OpenClaw requires `plugins.entries.openclaw-evolution-os.hooks.allowConversationAccess=true` when enabling it.
+- `writeCandidate=false` by default.
+- No core files are modified by the plugin.

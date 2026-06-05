@@ -8,7 +8,7 @@ Current scaffold:
 - runtime entry using `definePluginEntry`;
 - command bridge for manual host calls;
 - safe config defaults;
-- no automatic lifecycle prompt injection yet.
+- optional typed lifecycle hooks using `before_prompt_build` and `agent_end`, disabled by default.
 
 Commands exposed by the scaffold:
 
@@ -54,12 +54,51 @@ Make sure `evolution-review` is on PATH, or configure:
 }
 ```
 
+## Optional automatic hooks
+
+The scaffold now registers conservative typed hooks, but they are disabled unless configured:
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "openclaw-evolution-os": {
+        "enabled": true,
+        "config": {
+          "autoBeforeTask": true,
+          "autoAfterTask": true,
+          "writeCandidate": false
+        },
+        "hooks": {
+          "allowConversationAccess": true,
+          "timeouts": {
+            "before_prompt_build": 30000,
+            "agent_end": 30000
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Hook behavior:
+
+- `before_prompt_build`: runs `evolution-review --before-task --json`, records usage, and injects a short `prependContext` checklist.
+- `agent_end`: runs `evolution-review --after-task --json` using run outcome and bounded assistant text.
+
+Safety defaults:
+
+- `autoBeforeTask=false` by default.
+- `autoAfterTask=false` by default.
+- `writeCandidate=false` by default.
+- Prompt injection is bounded by `maxInjectedLessons` and `maxInjectedChars`.
+
 ## Next step
 
-Implement typed lifecycle hooks using OpenClaw Plugin SDK surfaces documented in `docs/OPENCLAW_INTEGRATION.md`:
+Move from bounded prompt injection to richer host state once verified in a live Gateway:
 
-- `api.on(...)` for runtime lifecycle hooks;
-- `api.session.workflow.enqueueNextTurnInjection(...)` for short prepare checklist injection;
 - `api.agent.events.registerAgentEventSubscription(...)` for cleaner task/run state;
-- `api.runContext.*` for per-run prepare/reflect state;
-- `api.session.state.registerSessionExtension(...)` for status projection.
+- `api.session.state.registerSessionExtension(...)` for status projection;
+- Control UI action for usage reports;
+- optional `api.session.workflow.enqueueNextTurnInjection(...)` for command-triggered next-turn context.

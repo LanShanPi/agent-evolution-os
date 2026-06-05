@@ -93,4 +93,4 @@ openclaw gateway restart
 openclaw plugins inspect openclaw-evolution-os --runtime --json
 ```
 
-Automatic typed lifecycle hooks are intentionally left for the next implementation step.
+Optional typed lifecycle hooks are implemented but disabled by default. Enable `autoBeforeTask` / `autoAfterTask` in plugin config after reviewing `plugins/openclaw-evolution-os/README.md`.
