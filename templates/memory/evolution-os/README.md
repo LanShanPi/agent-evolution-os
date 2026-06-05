@@ -15,6 +15,7 @@ Agent self-evolution governance system.
 - `RUNTIME_LOOP.md`：运行时自进化闭环理论，定义 prepare/reflect/usage-report、usage log 与训练语料边界。
 - `EVOLUTION_BOUNDARIES.md`：进化对象与自动化边界，回答到底进化什么、哪些必须确认、文件系统/plugin/参数训练边界。
 - `HOST_INTEGRATION.md`：宿主集成指南，定义核心入口、skill、runtime hooks、plugin guardrails 如何让 Evolution OS 真正进入 Agent 行为链路。
+- `OPENCLAW_INTEGRATION.md`：OpenClaw 集成蓝图，基于 OpenClaw internal hooks、typed plugin hooks、Plugin SDK host hooks 设计自动调用方案。
 - `INSTALL.md`：安装/复制到新 workspace 的说明。
 - `QUICKSTART.md`：日常最短使用流程。
 - `COMMANDS.md`：命令参考手册。
@@ -27,6 +28,6 @@ Agent self-evolution governance system.
 
 目标不是停在 MVP，而是做成实际可用、可复制给别人用、后续可插件化发布的 Evolution OS。
 
-当前：文件系统版已跑通核心闭环；已补齐 config、CLI help、self-check/self-test、install/quickstart/commands 文档和 examples；已新增 Runtime Evolution Loop、Evolution Boundaries 与 Host Integration 文档，解释治理模式、运行时模式、进化对象、自动化权限、文件系统/plugin/参数训练边界，以及如何通过核心入口、skill、runtime hooks 和 plugin guardrails 真正接入宿主 Agent 行为链路。当前已提供 Level 2 runtime hook commands；下一步做 OpenClaw runtime 自动调用与 Level 3 plugin guardrails。
+当前：文件系统版已跑通核心闭环；已补齐 config、CLI help、self-check/self-test、install/quickstart/commands 文档和 examples；已新增 Runtime Evolution Loop、Evolution Boundaries 与 Host Integration 文档，解释治理模式、运行时模式、进化对象、自动化权限、文件系统/plugin/参数训练边界，以及如何通过核心入口、skill、runtime hooks 和 plugin guardrails 真正接入宿主 Agent 行为链路。当前已提供 Level 2 runtime hook commands，并补充 OpenClaw 集成蓝图；下一步做 OpenClaw plugin scaffold 与 runtime 自动调用。
 
 详见：`DESIGN.md`、`RUNTIME_LOOP.md`、`PRODUCT.md`、`INSTALL.md`、`QUICKSTART.md`、`COMMANDS.md`。

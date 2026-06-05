@@ -154,6 +154,18 @@ Protocol  →  Skill  →  Review/Draft Tool  →  Future Plugin
 
 核心原则：核心文件只保留入口，Evolution OS 承载治理、检索、反思和代谢。自进化是否有效，不看写了多少文件，而看经验是否在未来任务中被稳定取回、应用、评估和修订。
 
+### 3.9 OpenClaw Integration：OpenClaw 原生融合
+
+位置：`memory/evolution-os/OPENCLAW_INTEGRATION.md`
+
+基于 OpenClaw 本地文档确认的扩展面：
+
+- internal hooks：适合 command/message/gateway 粗粒度生命周期自动化；
+- typed plugin hooks：OpenClaw 文档推荐用于 runtime lifecycle hooks、middleware、policy、prompt shaping、tool control；
+- Plugin SDK host hooks：`enqueueNextTurnInjection`、agent event subscription、runContext、session extension、runtime lifecycle cleanup。
+
+推荐路线是不直接修改 OpenClaw 安装包，而是先做 `openclaw-evolution-os` 插件 scaffold，用 typed hooks 自动调用 Evolution OS 的 `--before-task` / `--after-task` / `--periodic-usage`。
+
 ## 4. 目录结构
 
 ```text
