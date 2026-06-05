@@ -530,3 +530,13 @@ evolution-review --periodic-usage
 ```
 
 Host lifecycle hook for scheduled review. It summarizes prepared/applied/stale lessons from usage log.
+
+
+## Install Skill
+
+```bash
+evolution-review --install-skill
+evolution-review --install-skill --skill-dir ~/.openclaw/skills
+```
+
+Installs `self-evolution-governor/SKILL.md` if missing. It never overwrites an existing skill file.

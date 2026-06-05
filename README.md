@@ -2,6 +2,29 @@
 
 Agent self-evolution governance system.
 
+## Quick Install
+
+From a target agent workspace:
+
+```bash
+npm install github:LanShanPi/agent-evolution-os
+npx evolution-review --init
+npx evolution-review --install-skill
+npx evolution-review --self-check
+```
+
+Then add the short Evolution OS entry from `docs/INSTALL.md` to your `AGENTS.md`, system prompt, or equivalent host instruction file.
+
+Daily runtime hooks:
+
+```bash
+npx evolution-review --before-task --task "<task>"
+npx evolution-review --after-task --task "<task>" --outcome "<outcome>"
+npx evolution-review --periodic-usage
+```
+
+See `docs/INSTALL.md`, `docs/HOST_INTEGRATION.md`, and `docs/OPENCLAW_INTEGRATION.md`.
+
 ## 目录
 
 - `policy.md`：自进化写入、晋升、遗忘、回滚规则。

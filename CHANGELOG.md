@@ -6,6 +6,7 @@ All notable changes to Evolution OS will be documented here.
 
 ### Added
 
+- `--install-skill` command and expanded GitHub installation docs for clone/npm/global usage.
 - `OPENCLAW_INTEGRATION.md` blueprint based on OpenClaw internal hooks, typed plugin hooks, and Plugin SDK host hooks; recommends an `openclaw-evolution-os` plugin instead of editing OpenClaw core.
 - `--before-task`, `--after-task`, and `--periodic-usage` host hook commands for Level 2 runtime integration; self-test now verifies beforeTask/afterTask usage events.
 - `HOST_INTEGRATION.md` to define the minimum core entry, skill integration, runtime hooks, and plugin guardrails required for Evolution OS to actually affect host agent behavior.

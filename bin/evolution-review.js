@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const os = require('node:os');
 
 const ROOT = process.cwd();
 const EVO_DIR = path.join(ROOT, 'memory/evolution-os');
@@ -36,6 +37,9 @@ const init = args.has('--init');
 const initConfig = args.has('--init-config');
 const selfCheck = args.has('--self-check');
 const selfTest = args.has('--self-test');
+const installSkill = args.has('--install-skill');
+const skillDirArgIndex = argv.indexOf('--skill-dir');
+const skillDirArg = skillDirArgIndex >= 0 ? argv[skillDirArgIndex + 1] : '';
 const suggestPromotionCandidates = args.has('--suggest-promotion-candidates');
 const suggestPromotion = args.has('--suggest-promotion');
 const promoteDraft = args.has('--promote-draft');
@@ -142,6 +146,9 @@ Runtime hooks:
   --self-test                    Run fixture-based smoke tests in a temp workspace
   --init                         Initialize Evolution OS files/directories if missing
   --init-config                  Create memory/evolution-os/config.json if missing
+  --install-skill                Install self-evolution-governor skill if missing
+  --install-skill --skill-dir <dir>
+                                  Install skill under a custom skills directory
 
 Candidates:
   --candidate <id-or-file>       Select an inbox candidate
@@ -423,6 +430,52 @@ function renderInitMarkdown(report) {
   lines.push('');
   for (const file of report.files) lines.push(`- ${file.created ? 'created' : 'exists'}: ${file.path}${file.source ? ` (${file.source})` : ''}`);
   lines.push(`- ${report.config.created ? 'created' : 'exists'}: ${report.config.file}`);
+  lines.push('');
+  lines.push('## Boundary');
+  lines.push('');
+  lines.push(report.boundary);
+  lines.push('');
+  lines.push('## Next Suggested Actions');
+  lines.push('');
+  for (const action of report.nextSuggestedActions) lines.push(`- ${action}`);
+  lines.push('');
+  return lines.join('\n');
+}
+
+function installSelfEvolutionSkill(targetSkillsDir = '') {
+  const skillsRoot = targetSkillsDir || path.join(os.homedir(), '.agents', 'skills');
+  const targetDir = path.join(skillsRoot, 'self-evolution-governor');
+  const targetFile = path.join(targetDir, 'SKILL.md');
+  const template = templateContent('templates/skills/self-evolution-governor/SKILL.md', DEFAULT_SKILL);
+  if (exists(targetFile)) {
+    return {
+      generatedAt: new Date().toISOString(),
+      created: false,
+      file: targetFile,
+      source: 'existing-file',
+      boundary: 'Install-skill never overwrites an existing skill file.',
+      nextSuggestedActions: ['Use the self-evolution-governor skill for corrections, failures, repeated workflows, and durable memory/skill changes.'],
+    };
+  }
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.writeFileSync(targetFile, template.content.endsWith('\n') ? template.content : `${template.content}\n`);
+  return {
+    generatedAt: new Date().toISOString(),
+    created: true,
+    file: targetFile,
+    source: template.source,
+    boundary: 'Install-skill creates only the missing self-evolution-governor skill; it does not edit core files.',
+    nextSuggestedActions: ['Add a short Evolution OS entry to your host AGENTS.md/system prompt.', 'Run evolution-review --before-task/--after-task around durable work.'],
+  };
+}
+
+function renderInstallSkillMarkdown(report) {
+  const lines = [];
+  lines.push(`# Evolution OS Skill Install - ${today}`);
+  lines.push('');
+  lines.push(`Generated: ${report.generatedAt}`);
+  lines.push(`- ${report.created ? 'created' : 'exists'}: ${report.file}`);
+  lines.push(`- source: ${report.source}`);
   lines.push('');
   lines.push('## Boundary');
   lines.push('');
@@ -1850,6 +1903,10 @@ function runSelfTest() {
   ];
   checks.push(assertSelfTest(requiredAfterInit.every((relativePath) => exists(path.join(ROOT, relativePath))), '--init leaves required files/directories present'));
   checks.push(assertSelfTest(secondInitReport.files.every((file) => !file.created) && !secondInitReport.config.created, '--init is idempotent and does not overwrite files'));
+  const skillInstallDir = path.join(ROOT, 'tmp-global-skills');
+  const skillInstall = installSelfEvolutionSkill(skillInstallDir);
+  const skillInstallAgain = installSelfEvolutionSkill(skillInstallDir);
+  checks.push(assertSelfTest(skillInstall.created && exists(skillInstall.file) && !skillInstallAgain.created, '--install-skill creates missing skill and is idempotent', { first: skillInstall, second: skillInstallAgain }));
 
   const selfCheck = selfCheckReport();
   checks.push(assertSelfTest(selfCheck.ok, '--self-check passes after --init', selfCheck.missing));
@@ -2771,6 +2828,15 @@ if (help) {
       console.log(renderReflectMarkdown(report));
       if (candidateWrite) console.error(`${candidateWrite.written ? 'Wrote' : 'Skipped'} ${candidateWrite.file || ''}${candidateWrite.reason ? ` (${candidateWrite.reason})` : ''}`);
     }
+  } catch (error) {
+    console.error(`ERROR: ${error.message}`);
+    process.exit(1);
+  }
+} else if (installSkill) {
+  try {
+    const report = installSelfEvolutionSkill(skillDirArg);
+    if (json) console.log(JSON.stringify(report, null, 2));
+    else console.log(renderInstallSkillMarkdown(report));
   } catch (error) {
     console.error(`ERROR: ${error.message}`);
     process.exit(1);
