@@ -25,8 +25,8 @@ Expected: no private user/workspace references.
 Confirm `npm pack --dry-run` includes only expected files:
 
 - `bin/`
-- `docs/` including `RUNTIME_LOOP.md`
-- `templates/` including `templates/memory/evolution-os/RUNTIME_LOOP.md`
+- `docs/` including `RUNTIME_LOOP.md` and `EVOLUTION_BOUNDARIES.md`
+- `templates/` including `templates/memory/evolution-os/RUNTIME_LOOP.md` and `templates/memory/evolution-os/EVOLUTION_BOUNDARIES.md`
 - `examples/`
 - `README.md`
 - `CHANGELOG.md`

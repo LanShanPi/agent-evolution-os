@@ -126,6 +126,22 @@ Protocol  →  Skill  →  Review/Draft Tool  →  Future Plugin
 
 治理模式回答“经验能否安全进入系统”；运行时模式回答“经验是否真的改善未来行为”。二者合在一起，Evolution OS 才构成自进化代谢系统。
 
+### 3.7 Evolution Boundaries：进化对象与控制边界
+
+位置：`memory/evolution-os/EVOLUTION_BOUNDARIES.md`
+
+负责定义 Evolution OS 可以进化什么，以及不同层级的自动化边界：
+
+- L0 Observation：原始观察与任务流水；
+- L1 Candidate：候选经验；
+- L2 Memory：长期事实、偏好、项目状态；
+- L3 Skill：可复用流程；
+- L4 Policy：全局行为规则、安全边界、人格协议；
+- L5 Tooling：review 脚本、plugin、机械护栏；
+- L6 Parameters：训练样本与未来参数更新。
+
+默认原则：低风险可自动，中风险生成草案或保守写入，高风险必须确认。文件系统版提供软约束和审计，plugin 只机械化已验证协议，参数训练只能使用经过 usage evidence、蒸馏、隐私/安全/质量检查后的样本。
+
 ## 4. 目录结构
 
 ```text
